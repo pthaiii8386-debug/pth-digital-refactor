@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="44" y1="36" x2="458" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102547"/>
+      <stop offset="1" stop-color="#071120"/>
+    </linearGradient>
+    <linearGradient id="strokeGlow" x1="112" y1="96" x2="410" y2="418" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A2DEFF"/>
+      <stop offset="0.45" stop-color="#4EA7FF"/>
+      <stop offset="1" stop-color="#8AF8D0"/>
+    </linearGradient>
+    <linearGradient id="mono" x1="118" y1="118" x2="394" y2="394" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C7EEFF"/>
+      <stop offset="0.4" stop-color="#67B8FF"/>
+      <stop offset="1" stop-color="#7CF1CF"/>
+    </linearGradient>
+    <radialGradient id="flare" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(386 118) rotate(124.695) scale(244.349)">
+      <stop stop-color="#A8EEFF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#A8EEFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="22" y="22" width="468" height="468" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.278 0 0 0 0 0.647 0 0 0 0 1 0 0 0 0.35 0" result="glow"/>
+      <feBlend in="SourceGraphic" in2="glow" mode="screen"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="122" fill="#040C18"/>
+  <rect x="34" y="34" width="444" height="444" rx="98" fill="url(#bg)" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <rect x="58" y="58" width="396" height="396" rx="84" fill="url(#flare)" opacity="0.55"/>
+  <g filter="url(#softGlow)">
+    <path d="M116 366V144H248.6C316.09 144 360 183.481 360 240C360 296.519 316.09 336 248.6 336H180V366H116ZM180 280H240.4C278.517 280 299 266.997 299 240C299 213.003 278.517 200 240.4 200H180V280Z" fill="url(#mono)"/>
+    <path d="M332 144H395V366H332V144Z" fill="url(#mono)"/>
+    <path d="M106 116C148 86 199 70 255 70C371 70 448 149 448 256C448 284 442 311 430 335" stroke="url(#strokeGlow)" stroke-width="18" stroke-linecap="round" opacity="0.95"/>
+    <path d="M408 396C366 426 314 442 255 442C141 442 64 364 64 256C64 228 69 203 80 180" stroke="url(#strokeGlow)" stroke-width="18" stroke-linecap="round" opacity="0.55"/>
+    <path d="M160 110H340" stroke="rgba(255,255,255,0.18)" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

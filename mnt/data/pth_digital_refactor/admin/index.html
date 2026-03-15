@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin tổng quan</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-overview">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Mỗi nhóm lớn có một trang riêng để không còn phải cuộn rất dài trong cùng một màn hình.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        
+<section class="card shell-card">
+  <div class="admin-page-title">
+    <div>
+      <span class="mini-label">Admin dashboard</span>
+      <h1>Tổng quan quản trị</h1>
+      <p>Trang này chỉ giữ phần nhìn nhanh để đỡ rối mắt. Những phần lớn như thêm dịch vụ, quản lý khách hàng, thanh toán, live chat và thông tin doanh nghiệp đã được tách thành từng trang riêng.</p>
+    </div>
+  </div>
+  <div class="kpi-grid" data-admin-kpis></div>
+</section>
+<section class="quick-links" data-admin-quick-links></section>
+<section class="card shell-card">
+  <div class="section-head compact">
+    <div>
+      <span class="mini-label">Cần xử lý</span>
+      <h2>Lệnh nạp ưu tiên</h2>
+      <p>Giữ gọn ở dashboard để bạn quyết định nên vào khu nào trước.</p>
+    </div>
+  </div>
+  <div class="list-stack" data-admin-urgent></div>
+</section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin thanh toán</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-payment">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Mỗi nhóm lớn có một trang riêng để không còn phải cuộn rất dài trong cùng một màn hình.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        
+<section class="card shell-card">
+  <div class="admin-page-title">
+    <div>
+      <span class="mini-label">Thanh toán admin</span>
+      <h1>QR, ngân hàng và thông tin liên hệ</h1>
+      <p>Khi bạn cập nhật QR hoặc thông tin thanh toán ở đây, dữ liệu sẽ được lưu lại trong local storage của website và hiển thị cho khách ở mục nạp tiền sau khi tải lại trang.</p>
+    </div>
+  </div>
+</section>
+<section class="admin-page-grid">
+  <article class="card shell-card">
+    <div class="section-head compact">
+      <div>
+        <span class="mini-label">Nhận tiền</span>
+        <h2>Cập nhật thông tin thanh toán</h2>
+      </div>
+    </div>
+    <form id="admin-payment-form" class="form-grid two">
+      <input class="input" name="bankName" placeholder="Ngân hàng" required>
+      <input class="input" name="accountName" placeholder="Chủ tài khoản" required>
+      <input class="input" name="accountNumber" placeholder="Số tài khoản" required>
+      <input class="input" name="minDeposit" type="number" min="0" placeholder="Mức nạp khuyến nghị">
+      <textarea class="textarea span-2" name="note" placeholder="Ghi chú thanh toán cho khách hàng"></textarea>
+      <div class="card upload-card span-2">
+        <div class="mini-label">QR thanh toán</div>
+        <input class="input" type="file" accept="image/*" data-admin-qr-upload>
+        <div class="file-hint">Tải ảnh QR mới nếu bạn muốn thay QR hiện tại.</div>
+      </div>
+      <div class="card-actions span-2"><button class="btn primary" type="submit">Lưu thông tin thanh toán</button><button class="btn ghost" type="button" data-clear-qr>Xóa QR hiện tại</button></div>
+    </form>
+  </article>
+  <article class="wallet-card sticky-card" data-admin-payment-preview></article>
+</section>
+<section class="admin-page-grid">
+  <article class="card shell-card">
+    <div class="section-head compact">
+      <div>
+        <span class="mini-label">Liên hệ doanh nghiệp</span>
+        <h2>Mail, số điện thoại, địa chỉ và thương hiệu</h2>
+      </div>
+    </div>
+    <form id="admin-company-form" class="setting-form-grid">
+      <label><span class="mini-label">Tên doanh nghiệp</span><input class="input" name="name" placeholder="Tên thương hiệu"></label>
+      <label><span class="mini-label">Slogan</span><input class="input" name="slogan" placeholder="Slogan ngắn"></label>
+      <label><span class="mini-label">Admin phụ trách</span><input class="input" name="adminName" placeholder="Tên admin"></label>
+      <label><span class="mini-label">Chức danh</span><input class="input" name="adminTitle" placeholder="Chức danh"></label>
+      <label><span class="mini-label">Email hỗ trợ</span><input class="input" name="supportEmail" placeholder="support@domain.com"></label>
+      <label><span class="mini-label">Số điện thoại</span><input class="input" name="supportPhone" placeholder="090..."></label>
+      <label class="span-2"><span class="mini-label">Địa chỉ</span><input class="input" name="address" placeholder="Địa chỉ doanh nghiệp"></label>
+      <label class="span-2"><span class="mini-label">Giới thiệu ngắn</span><textarea class="textarea" name="about" placeholder="Mô tả ngắn về doanh nghiệp"></textarea></label>
+      <label class="span-2"><span class="mini-label">Thông điệp tin cậy</span><textarea class="textarea" name="trustText" placeholder="Thông điệp hiển thị ở footer"></textarea></label>
+      <button class="btn secondary span-2" type="submit">Lưu thông tin doanh nghiệp</button>
+    </form>
+  </article>
+  <article class="wallet-card sticky-card" data-admin-company-preview></article>
+</section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

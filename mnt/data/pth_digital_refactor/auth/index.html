@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Đăng nhập / Đăng ký</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="auth">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang bắt đầu</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="auth-shell entry-shell">
+    <div class="container auth-grid auth-grid-upgraded">
+      <section class="auth-intro auth-showcase shell-card">
+        <span class="eyebrow">Cổng truy cập hệ thống</span>
+        <h1>Đăng nhập gọn, sáng, chuyên nghiệp và dễ nhận biết ngay khi vào web.</h1>
+        <p>Khách hàng vào là thấy ngay khu đăng nhập, sau đó có thể xem dịch vụ, nạp coin, theo dõi lịch sử và live chat trong các trang riêng biệt, không bị dồn khối dài.</p>
+        <div class="hero-metrics">
+          <article class="stack-item"><strong>Luồng khách hàng</strong><span>Đăng nhập → Tổng quan → Dịch vụ → Nạp tiền → Lịch sử → Live chat</span></article>
+          <article class="stack-item"><strong>Thiết kế doanh nghiệp</strong><span>Nền nổi khối, nút sáng tinh tế, logo đậm hơn và form rõ trọng tâm.</span></article>
+          <article class="stack-item"><strong>Ẩn tài khoản demo</strong><span>Thông tin demo vẫn nằm trong code/local state nhưng không hiển thị ra giao diện.</span></article>
+        </div>
+      </section>
+
+      <section class="card shell-card auth-panel auth-panel-elevated">
+        <div class="auth-brand-block">
+          <span class="mini-label">Đăng nhập tài khoản</span>
+          <h2>Chào mừng quay lại</h2>
+          <p>Đăng nhập bằng tên đăng nhập hoặc email. Nếu chưa có tài khoản, bạn có thể đăng ký ngay bên dưới.</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-auth-tab-btn="login" type="button">Đăng nhập</button>
+          <button class="tab-btn" data-auth-tab-btn="register" type="button">Đăng ký</button>
+        </div>
+
+        <div data-auth-tab="login">
+          <form id="login-form" class="form-grid">
+            <input class="input" name="identifier" placeholder="Tên đăng nhập hoặc email" required>
+            <input class="input" type="password" name="password" placeholder="Mật khẩu" required>
+            <button class="btn primary auth-submit" type="submit">Đăng nhập vào hệ thống</button>
+          </form>
+        </div>
+
+        <div class="hidden" data-auth-tab="register">
+          <form id="register-form" class="form-grid two">
+            <input class="input" name="fullName" placeholder="Họ và tên" required>
+            <input class="input" name="username" placeholder="Tên đăng nhập" required>
+            <input class="input" type="email" name="email" placeholder="Email" required>
+            <input class="input" name="phone" placeholder="Số điện thoại">
+            <input class="input" type="password" name="password" placeholder="Mật khẩu" required>
+            <input class="input" type="password" name="confirmPassword" placeholder="Nhập lại mật khẩu" required>
+            <textarea class="textarea span-2" name="address" placeholder="Địa chỉ hoặc thông tin liên hệ thêm"></textarea>
+            <button class="btn secondary span-2 auth-submit" type="submit">Tạo tài khoản khách hàng</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

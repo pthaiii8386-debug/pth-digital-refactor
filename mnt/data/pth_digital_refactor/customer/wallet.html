@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Ví coin & nạp tiền</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="customer-wallet">
+  <header class="site-header customer-header">
+    <div class="container topbar">
+      <div data-brand></div>
+      <div class="utility-bar">
+        <div class="utility-pill balance-pill">
+          <span>Số dư</span>
+          <strong data-customer-balance-pill>0 coin</strong>
+          <button class="mini-round" data-scroll-deposit type="button">+</button>
+        </div>
+        <button class="icon-pill" type="button" data-open-orders title="Lịch sử">📋</button>
+        <button class="icon-pill" type="button" data-open-support title="Hỗ trợ">💬</button>
+        <button class="profile-pill" type="button" data-open-profile>
+          <img data-customer-avatar-top alt="avatar">
+          <span data-customer-initials>KH</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container dashboard-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><img data-customer-avatar alt="avatar"><span data-customer-initials-large>KH</span></div>
+          <div>
+            <h3 data-customer-name></h3>
+            <p class="muted" data-customer-username></p>
+            <p class="muted" data-customer-email></p>
+          </div>
+        </div>
+        <div class="nav-stack" data-customer-nav></div>
+        <div class="sidebar-card">
+          <div class="mini-label">Trải nghiệm mới</div>
+          <strong>Mỗi danh mục là một trang riêng</strong>
+          <p class="muted">Khách vẫn nhìn thấy toàn bộ menu, nhưng nội dung được chia nhỏ để không bị dài và rối.</p>
+        </div>
+        <button class="btn ghost full" data-logout-btn type="button">Đăng xuất</button>
+      </aside>
+
+      <section class="content-stack">
+
+        <section class="card shell-card">
+          <div class="page-hero">
+            <div>
+              <span class="mini-label">Ví coin</span>
+              <h2>Nạp tiền rõ quy trình hơn</h2>
+              <p>Nhập số tiền, xem ngay thông tin nhận tiền của admin, nội dung chuyển khoản, trạng thái thanh toán và lịch sử duyệt. Mục này được tách riêng để nhìn chuyên nghiệp hơn thay vì chỉ hiện một dòng “nạp tối thiểu”.</p>
+            </div>
+          </div>
+          <div data-wallet-balance></div>
+        </section>
+
+        <section class="service-layout">
+          <article class="wallet-card" data-payment-root></article>
+          <article class="wallet-card">
+            <span class="mini-label">Tạo thanh toán</span>
+            <h3>Nhập số tiền muốn nạp</h3>
+            <form id="deposit-form" class="form-grid">
+              <input class="input" type="number" name="amount" placeholder="Ví dụ: 100000" required>
+              <input class="input" name="note" placeholder="Ghi chú thêm nếu cần">
+              <div class="notice">Sau khi nhập số tiền, hệ thống sẽ hiển thị bản xem trước thanh toán để khách dễ chuyển khoản đúng hơn.</div>
+              <button class="btn primary" type="submit">Tạo thanh toán</button>
+            </form>
+            <div id="payment-preview" class="list-stack" style="margin-top:18px"></div>
+          </article>
+        </section>
+
+        <section class="history-columns">
+          <div class="table-card-simple">
+            <h3>Lịch sử yêu cầu nạp</h3>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Mã nạp</th><th>Số tiền</th><th>Coin</th><th>Trạng thái</th><th>Nội dung CK</th><th>Thời gian</th></tr></thead>
+                <tbody data-wallet-deposits></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="table-card-simple">
+            <h3>Thông báo thanh toán</h3>
+            <div class="list-stack" data-wallet-notifications></div>
+          </div>
+        </section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav" data-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

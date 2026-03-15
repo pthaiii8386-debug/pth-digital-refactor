@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Cổng truy cập</title>
+  <meta name="description" content="Cổng truy cập dịch vụ số doanh nghiệp với đăng nhập rõ ràng, khu khách hàng riêng và admin quản trị gọn gàng.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="entry">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="#entry-services">Dịch vụ</a>
+        <a href="#entry-about">Giới thiệu</a>
+        <a href="auth/index.html">Trang đăng nhập riêng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="auth-shell entry-shell">
+    <section class="container auth-grid auth-grid-upgraded entry-grid">
+      <section class="auth-intro auth-showcase shell-card">
+        <span class="eyebrow">PTH DIGITAL • Login first</span>
+        <h1>Bắt đầu vào website là thấy ngay phần đăng nhập.</h1>
+        <p>Trang đầu đóng vai trò cổng vào hệ thống để khách hàng biết ngay nơi đăng nhập, đăng ký, sau đó đi tiếp vào khu dịch vụ và tài khoản của mình một cách rõ ràng hơn.</p>
+        <div class="hero-metrics" id="entry-about">
+          <article class="stack-item"><strong>Doanh nghiệp hơn</strong><span>Không còn rối từ đầu trang, khách nhìn ra ngay hành động chính cần làm.</span></article>
+          <article class="stack-item"><strong>Dễ dùng trên điện thoại</strong><span>Form lớn, nút rõ, layout co gọn, không bị vỡ khối khi vào bằng mobile.</span></article>
+          <article class="stack-item"><strong>Thanh toán rõ ràng</strong><span>Khách nạp tiền sẽ thấy QR, tài khoản admin, số tiền và trạng thái duyệt.</span></article>
+        </div>
+      </section>
+
+      <section class="card shell-card auth-panel auth-panel-elevated">
+        <div class="auth-brand-block">
+          <span class="mini-label">Truy cập nhanh</span>
+          <h2>Đăng nhập / Đăng ký</h2>
+          <p>Một điểm vào duy nhất, rõ ràng, thẩm mỹ hơn và không hiển thị tài khoản demo ra ngoài giao diện.</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-auth-tab-btn="login" type="button">Đăng nhập</button>
+          <button class="tab-btn" data-auth-tab-btn="register" type="button">Đăng ký</button>
+        </div>
+
+        <div data-auth-tab="login">
+          <form id="login-form" class="form-grid">
+            <input class="input" name="identifier" placeholder="Tên đăng nhập hoặc email" required>
+            <input class="input" type="password" name="password" placeholder="Mật khẩu" required>
+            <button class="btn primary auth-submit" type="submit">Đăng nhập ngay</button>
+          </form>
+          <div class="card-actions">
+            <a class="btn ghost small" href="auth/index.html">Mở trang login riêng</a>
+          </div>
+        </div>
+
+        <div class="hidden" data-auth-tab="register">
+          <form id="register-form" class="form-grid two">
+            <input class="input" name="fullName" placeholder="Họ và tên" required>
+            <input class="input" name="username" placeholder="Tên đăng nhập" required>
+            <input class="input" type="email" name="email" placeholder="Email" required>
+            <input class="input" name="phone" placeholder="Số điện thoại">
+            <input class="input" type="password" name="password" placeholder="Mật khẩu" required>
+            <input class="input" type="password" name="confirmPassword" placeholder="Nhập lại mật khẩu" required>
+            <textarea class="textarea span-2" name="address" placeholder="Địa chỉ hoặc thông tin liên hệ thêm"></textarea>
+            <button class="btn secondary span-2 auth-submit" type="submit">Tạo tài khoản</button>
+          </form>
+        </div>
+      </section>
+    </section>
+
+    <section class="section" id="entry-services">
+      <div class="container">
+        <div class="section-head compact">
+          <div>
+            <span class="mini-label">Dịch vụ nổi bật</span>
+            <h2>Xem nhanh dịch vụ trước khi đăng nhập</h2>
+            <p>Khách có thể tham khảo nhanh các nhóm dịch vụ chính, sau đó đăng nhập để xem chi tiết và mua hàng chuyên nghiệp hơn.</p>
+          </div>
+        </div>
+        <div class="service-grid" data-public-services></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>

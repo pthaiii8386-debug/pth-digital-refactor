@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Hồ sơ khách hàng</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="customer-profile">
+  <header class="site-header customer-header">
+    <div class="container topbar">
+      <div data-brand></div>
+      <div class="utility-bar">
+        <div class="utility-pill balance-pill">
+          <span>Số dư</span>
+          <strong data-customer-balance-pill>0 coin</strong>
+          <button class="mini-round" data-scroll-deposit type="button">+</button>
+        </div>
+        <button class="icon-pill" type="button" data-open-orders title="Lịch sử">📋</button>
+        <button class="icon-pill" type="button" data-open-support title="Hỗ trợ">💬</button>
+        <button class="profile-pill" type="button" data-open-profile>
+          <img data-customer-avatar-top alt="avatar">
+          <span data-customer-initials>KH</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container dashboard-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><img data-customer-avatar alt="avatar"><span data-customer-initials-large>KH</span></div>
+          <div>
+            <h3 data-customer-name></h3>
+            <p class="muted" data-customer-username></p>
+            <p class="muted" data-customer-email></p>
+          </div>
+        </div>
+        <div class="nav-stack" data-customer-nav></div>
+        <div class="sidebar-card">
+          <div class="mini-label">Trải nghiệm mới</div>
+          <strong>Mỗi danh mục là một trang riêng</strong>
+          <p class="muted">Khách vẫn nhìn thấy toàn bộ menu, nhưng nội dung được chia nhỏ để không bị dài và rối.</p>
+        </div>
+        <button class="btn ghost full" data-logout-btn type="button">Đăng xuất</button>
+      </aside>
+
+      <section class="content-stack">
+
+        <section class="card shell-card">
+          <div class="page-hero">
+            <div>
+              <span class="mini-label">Hồ sơ cá nhân</span>
+              <h2>Thông tin khách hàng tách riêng</h2>
+              <p>Trang hồ sơ chỉ tập trung vào dữ liệu cá nhân và ảnh đại diện để nhìn gọn, dễ chỉnh sửa và chuyên nghiệp hơn.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-layout">
+          <div class="profile-preview" data-customer-profile></div>
+          <form id="profile-form" class="form-grid two shell-card">
+            <input class="input" name="fullName" placeholder="Họ và tên" required>
+            <input class="input" name="email" type="email" placeholder="Email" required>
+            <input class="input" name="phone" placeholder="Số điện thoại">
+            <input class="input" name="address" placeholder="Địa chỉ">
+            <textarea class="textarea span-2" name="bio" placeholder="Giới thiệu ngắn về bạn"></textarea>
+            <div class="card upload-card span-2">
+              <div class="mini-label">Ảnh đại diện</div>
+              <input class="input" type="file" accept="image/*" data-profile-avatar-upload>
+              <div class="file-hint">Ảnh mới sẽ cập nhật ở góc phải trên và toàn bộ hồ sơ tài khoản.</div>
+            </div>
+            <button class="btn secondary span-2" type="submit">Lưu hồ sơ khách hàng</button>
+          </form>
+        </section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav" data-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

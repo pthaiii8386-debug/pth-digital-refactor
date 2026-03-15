@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin cấu hình doanh nghiệp</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-settings">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Mỗi nhóm lớn có một trang riêng để không còn phải cuộn rất dài trong cùng một màn hình.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        
+<section class="card shell-card">
+  <div class="admin-page-title">
+    <div>
+      <span class="mini-label">Doanh nghiệp</span>
+      <h1>Cấu hình thương hiệu và tích hợp</h1>
+      <p>Trang này gom các thiết lập dài hạn như thông tin doanh nghiệp và kết nối API để sau này nâng cấp sang backend thật vẫn có cấu trúc rõ ràng.</p>
+    </div>
+  </div>
+</section>
+<section class="admin-page-grid">
+  <article class="card shell-card">
+    <div class="section-head compact"><div><span class="mini-label">Thông tin doanh nghiệp</span><h2>Chỉnh mail, địa chỉ, số điện thoại</h2></div></div>
+    <form id="admin-company-form" class="setting-form-grid">
+      <label><span class="mini-label">Tên doanh nghiệp</span><input class="input" name="name"></label>
+      <label><span class="mini-label">Slogan</span><input class="input" name="slogan"></label>
+      <label><span class="mini-label">Admin phụ trách</span><input class="input" name="adminName"></label>
+      <label><span class="mini-label">Chức danh</span><input class="input" name="adminTitle"></label>
+      <label><span class="mini-label">Email hỗ trợ</span><input class="input" name="supportEmail"></label>
+      <label><span class="mini-label">Số điện thoại</span><input class="input" name="supportPhone"></label>
+      <label class="span-2"><span class="mini-label">Địa chỉ</span><input class="input" name="address"></label>
+      <label class="span-2"><span class="mini-label">Giới thiệu</span><textarea class="textarea" name="about"></textarea></label>
+      <label class="span-2"><span class="mini-label">Thông điệp footer</span><textarea class="textarea" name="trustText"></textarea></label>
+      <button class="btn secondary span-2" type="submit">Lưu thông tin doanh nghiệp</button>
+    </form>
+  </article>
+  <article class="wallet-card sticky-card" data-admin-company-preview></article>
+</section>
+<section class="integration-grid">
+  <article class="card shell-card">
+    <div class="section-head compact"><div><span class="mini-label">API dịch vụ</span><h2>Cấu hình đồng bộ dài hạn</h2></div></div>
+    <form id="admin-integration-form" class="setting-form-grid">
+      <label class="span-2"><span class="mini-label">API endpoint</span><input class="input" name="endpoint"></label>
+      <label><span class="mini-label">Kiểu auth</span><select class="select" name="authType"><option value="bearer">Bearer token</option><option value="x-api-key">x-api-key</option></select></label>
+      <label><span class="mini-label">API key</span><input class="input" name="apiKey"></label>
+      <label><span class="mini-label">Path đến mảng dữ liệu</span><input class="input" name="servicePath"></label>
+      <label><span class="mini-label">Lặp đồng bộ (phút)</span><input class="input" type="number" min="5" name="syncEveryMinutes"></label>
+      <label><span class="mini-label">Webhook secret</span><input class="input" name="webhookSecret"></label>
+      <label><span class="mini-label">Field tên</span><input class="input" name="nameField"></label>
+      <label><span class="mini-label">Field danh mục</span><input class="input" name="categoryField"></label>
+      <label><span class="mini-label">Field giá</span><input class="input" name="priceField"></label>
+      <label><span class="mini-label">Field đơn vị</span><input class="input" name="unitField"></label>
+      <label><span class="mini-label">Field mô tả</span><input class="input" name="descriptionField"></label>
+      <label><span class="mini-label">Field tags</span><input class="input" name="tagsField"></label>
+      <label><span class="mini-label">Field featured</span><input class="input" name="featuredField"></label>
+      <label><span class="mini-label">Field status</span><input class="input" name="statusField"></label>
+      <label class="span-2"><span class="mini-label">Bật cấu hình này</span><div class="utility-pill"><input type="checkbox" name="enabled"> <span>Dùng endpoint hiện tại</span></div></label>
+      <div class="span-2 integration-actions"><button class="btn primary" type="submit">Lưu cấu hình API</button><button class="btn secondary" type="button" data-sync-services>Đồng bộ thử dịch vụ</button></div>
+    </form>
+  </article>
+  <article class="wallet-card sticky-card" data-admin-integration-preview></article>
+</section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

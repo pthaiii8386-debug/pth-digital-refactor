@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Khu khách hàng</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="customer-overview">
+  <header class="site-header customer-header">
+    <div class="container topbar">
+      <div data-brand></div>
+      <div class="utility-bar">
+        <div class="utility-pill balance-pill">
+          <span>Số dư</span>
+          <strong data-customer-balance-pill>0 coin</strong>
+          <button class="mini-round" data-scroll-deposit type="button">+</button>
+        </div>
+        <button class="icon-pill" type="button" data-open-orders title="Lịch sử">📋</button>
+        <button class="icon-pill" type="button" data-open-support title="Hỗ trợ">💬</button>
+        <button class="profile-pill" type="button" data-open-profile>
+          <img data-customer-avatar-top alt="avatar">
+          <span data-customer-initials>KH</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container dashboard-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><img data-customer-avatar alt="avatar"><span data-customer-initials-large>KH</span></div>
+          <div>
+            <h3 data-customer-name></h3>
+            <p class="muted" data-customer-username></p>
+            <p class="muted" data-customer-email></p>
+          </div>
+        </div>
+        <div class="nav-stack" data-customer-nav></div>
+        <div class="sidebar-card">
+          <div class="mini-label">Trải nghiệm mới</div>
+          <strong>Mỗi danh mục là một trang riêng</strong>
+          <p class="muted">Khách vẫn nhìn thấy toàn bộ menu, nhưng nội dung được chia nhỏ để không bị dài và rối.</p>
+        </div>
+        <button class="btn ghost full" data-logout-btn type="button">Đăng xuất</button>
+      </aside>
+
+      <section class="content-stack">
+
+        <section class="card shell-card">
+          <div class="page-hero">
+            <div>
+              <span class="mini-label">Customer dashboard</span>
+              <h2>Tổng quan tài khoản của bạn</h2>
+              <p>Trang đầu chỉ hiển thị những nội dung quan trọng nhất. Các khu lớn như Dịch vụ, Ví coin, Lịch sử, Hồ sơ và Live chat đã được tách ra trang riêng để giao diện gọn hơn.</p>
+            </div>
+            <div class="page-tools">
+              <a class="btn secondary" href="services.html">Xem dịch vụ</a>
+              <a class="btn primary" href="wallet.html">Nạp coin</a>
+            </div>
+          </div>
+          <div class="kpi-grid" data-customer-kpis></div>
+        </section>
+
+        <section class="quick-links" data-customer-quick-links></section>
+
+        <section class="card shell-card">
+          <div class="section-head compact">
+            <div>
+              <span class="mini-label">Gần đây</span>
+              <h2>Đơn hàng mới nhất</h2>
+              <p>Giữ phần tổng quan ngắn, còn chi tiết nằm trong trang Lịch sử riêng.</p>
+            </div>
+          </div>
+          <div class="list-stack" data-customer-recent></div>
+        </section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav" data-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

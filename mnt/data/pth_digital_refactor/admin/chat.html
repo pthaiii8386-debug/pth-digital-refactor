@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin live chat</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-chat">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Mỗi nhóm lớn có một trang riêng để không còn phải cuộn rất dài trong cùng một màn hình.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        
+<section class="card shell-card">
+  <div class="admin-page-title">
+    <div>
+      <span class="mini-label">Live chat</span>
+      <h1>Nhắn trực tiếp với khách hàng</h1>
+      <p>Khung chat được đặt riêng để bạn chỉ tập trung xử lý hội thoại, không còn phải lướt qua các khu khác rồi mới trả lời được khách.</p>
+    </div>
+  </div>
+</section>
+<section class="card shell-card">
+  <div class="admin-chat-shell">
+    <aside class="admin-conversation-list" data-admin-chat-list></aside>
+    <section class="chat-window">
+      <div class="chat-messages" data-admin-chat-messages></div>
+      <form id="admin-chat-form" class="chat-form admin-chat-form">
+        <textarea class="textarea" name="message" placeholder="Nhập nội dung phản hồi cho khách hàng"></textarea>
+        <button class="btn primary" type="submit">Gửi phản hồi</button>
+      </form>
+    </section>
+  </div>
+</section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

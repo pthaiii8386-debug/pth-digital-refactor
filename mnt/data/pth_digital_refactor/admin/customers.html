@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin khách hàng</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-customers">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Mỗi nhóm lớn có một trang riêng để không còn phải cuộn rất dài trong cùng một màn hình.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        
+<section class="card shell-card">
+  <div class="admin-page-title">
+    <div>
+      <span class="mini-label">Khách hàng</span>
+      <h1>Quản lý hồ sơ và thu chi khách hàng</h1>
+      <p>Toàn bộ thông tin khách hàng được gom vào một trang riêng: bảng gọn, popup xem chi tiết, lịch sử nạp tiền và xử lý lệnh nạp ngay trong bảng.</p>
+    </div>
+  </div>
+</section>
+<section class="card shell-card">
+  <div class="admin-toolbar">
+    <label class="search-pill compact-search"><span>🔎</span><input class="search-input" type="search" placeholder="Tìm theo tên, username, email..." data-admin-customer-search></label>
+    <div class="tab-scroll admin-filter-chips" data-admin-customer-filters></div>
+  </div>
+  <div class="admin-customer-grid">
+    <div class="table-card-simple compact-table-card">
+      <div class="table-wrap compact-table-wrap">
+        <table class="table table-compact admin-customer-table">
+          <thead><tr><th>Khách hàng</th><th>Liên hệ</th><th>Số dư</th><th>Đơn hàng</th><th>Nạp chờ</th><th>Mức ưu tiên</th><th>Thao tác</th></tr></thead>
+          <tbody data-admin-customers-list></tbody>
+        </table>
+      </div>
+      <div class="admin-pagination" data-admin-customer-pagination></div>
+    </div>
+    <aside class="shell-card admin-customer-preview" data-admin-customer-preview></aside>
+  </div>
+</section>
+<section class="table-card-simple">
+  <div class="section-head compact">
+    <div>
+      <span class="mini-label">Lệnh nạp</span>
+      <h2>Duyệt nạp / từ chối ngay trong bảng</h2>
+    </div>
+  </div>
+  <div class="table-wrap soft-scroll">
+    <table class="table">
+      <thead><tr><th>Mã nạp</th><th>Khách hàng</th><th>Số tiền</th><th>Coin</th><th>Nội dung CK</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody data-admin-deposits></tbody>
+    </table>
+  </div>
+</section>
+
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

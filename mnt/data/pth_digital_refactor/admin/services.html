@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTH DIGITAL - Admin dịch vụ</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-page="admin-services">
+  <header class="site-header">
+    <div class="container navbar">
+      <div data-brand></div>
+      <nav class="nav-links">
+        <a href="../index.html">Trang chủ</a>
+        <a href="../customer/index.html">Khu khách hàng</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <div class="container admin-shell-grid">
+      <aside class="sidebar card shell-card">
+        <div class="user-panel">
+          <div class="avatar avatar-lg"><span data-admin-avatar>AD</span></div>
+          <div>
+            <h3 data-admin-name></h3>
+            <p class="muted" data-admin-username></p>
+            <p class="muted" data-admin-email></p>
+          </div>
+        </div>
+        <div class="sidebar-card soft-card">
+          <div class="mini-label">Admin workspace</div>
+          <strong>Quản trị gọn nhưng đủ mục</strong>
+          <p class="muted">Trang dịch vụ được tách riêng để form thêm/sửa lớn hơn, thao tác dễ hơn trên cả desktop lẫn điện thoại.</p>
+        </div>
+        <div class="nav-stack compact-admin-nav" data-admin-nav></div>
+        <button class="btn ghost full" type="button" data-admin-logout>Đăng xuất</button>
+      </aside>
+
+      <section class="admin-page-main">
+        <section class="card shell-card">
+          <div class="admin-page-title">
+            <div>
+              <span class="mini-label">Dịch vụ</span>
+              <h1>Quản lý dịch vụ chuyên nghiệp</h1>
+              <p>Form thêm dịch vụ được làm lớn, rõ, có ảnh đại diện và khu xem trước để bạn không bị khó thao tác. Bảng dịch vụ phía dưới hỗ trợ sửa/xóa nhanh, còn phần API giúp chuẩn bị sẵn để đồng bộ từ web khác sau này.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card shell-card service-form-wide">
+          <div class="section-head compact">
+            <div>
+              <span class="mini-label">Tạo / cập nhật dịch vụ</span>
+              <h2>Thêm dịch vụ mới</h2>
+            </div>
+          </div>
+          <div class="service-form-layout">
+            <form id="admin-service-form" class="form-grid two service-form-large">
+              <input type="hidden" name="id">
+              <label>
+                <span class="mini-label">Tên dịch vụ</span>
+                <input class="input" name="name" placeholder="Ví dụ: Thiết kế website bán hàng" required>
+              </label>
+              <label>
+                <span class="mini-label">Danh mục</span>
+                <input class="input" name="category" placeholder="Website / SEO / Social / API..." required>
+              </label>
+              <label>
+                <span class="mini-label">Giá coin</span>
+                <input class="input" name="price" type="number" min="0" placeholder="120000" required>
+              </label>
+              <label>
+                <span class="mini-label">Đơn vị</span>
+                <input class="input" name="unit" placeholder="gói / tháng / lượt" required>
+              </label>
+              <label>
+                <span class="mini-label">Tag dịch vụ</span>
+                <input class="input" name="tags" placeholder="UI hiện đại, Responsive, Bảo trì">
+              </label>
+              <label>
+                <span class="mini-label">Hiển thị nổi bật</span>
+                <select class="select" name="featured">
+                  <option value="false">Dịch vụ thường</option>
+                  <option value="true">Dịch vụ nổi bật</option>
+                </select>
+              </label>
+              <label class="span-2">
+                <span class="mini-label">Ảnh dịch vụ</span>
+                <input class="input" type="file" accept="image/*" data-service-image-upload>
+              </label>
+              <label class="span-2">
+                <span class="mini-label">Mô tả chi tiết</span>
+                <textarea class="textarea" name="description" placeholder="Mô tả rõ khách hàng sẽ nhận được gì, thời gian xử lý, ưu điểm..." required></textarea>
+              </label>
+              <div class="card-actions span-2">
+                <button class="btn primary" type="submit" data-service-submit>Lưu dịch vụ mới</button>
+                <button class="btn ghost" type="button" data-service-reset>Làm mới form</button>
+              </div>
+            </form>
+            <aside class="wallet-card sticky-card" data-admin-service-preview></aside>
+          </div>
+        </section>
+
+        <section class="table-card-simple">
+          <div class="section-head compact">
+            <div>
+              <span class="mini-label">Danh sách hiện tại</span>
+              <h2>Dịch vụ đang mở bán</h2>
+            </div>
+          </div>
+          <div class="table-wrap soft-scroll">
+            <table class="table">
+              <thead><tr><th>Dịch vụ</th><th>Danh mục</th><th>Giá</th><th>Đơn vị</th><th>Trạng thái</th><th>Nổi bật</th><th>Thao tác</th></tr></thead>
+              <tbody data-admin-services></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="integration-grid">
+          <article class="card shell-card">
+            <div class="section-head compact">
+              <div>
+                <span class="mini-label">API dịch vụ</span>
+                <h2>Gắn key / endpoint để đồng bộ</h2>
+                <p>Phần này dành cho việc lấy dịch vụ từ web/API khác. Bạn chỉ cần cấu hình endpoint, key và mapping field; backend sẽ có thể tự đồng bộ theo giờ hoặc gọi webhook.</p>
+              </div>
+            </div>
+            <form id="admin-integration-form" class="setting-form-grid">
+              <label class="span-2"><span class="mini-label">API endpoint</span><input class="input" name="endpoint" placeholder="https://domain.com/api/services"></label>
+              <label><span class="mini-label">Kiểu auth</span><select class="select" name="authType"><option value="bearer">Bearer token</option><option value="x-api-key">x-api-key</option></select></label>
+              <label><span class="mini-label">API key</span><input class="input" name="apiKey" placeholder="Dán key vào đây"></label>
+              <label><span class="mini-label">Lặp đồng bộ (phút)</span><input class="input" type="number" min="5" name="syncEveryMinutes" placeholder="60"></label>
+              <label><span class="mini-label">Webhook secret</span><input class="input" name="webhookSecret" placeholder="Secret để gọi webhook sync"></label>
+              <label><span class="mini-label">Path đến mảng dữ liệu</span><input class="input" name="servicePath" placeholder="Ví dụ: data.items"></label>
+              <label><span class="mini-label">Field tên</span><input class="input" name="nameField" placeholder="name"></label>
+              <label><span class="mini-label">Field danh mục</span><input class="input" name="categoryField" placeholder="category"></label>
+              <label><span class="mini-label">Field giá</span><input class="input" name="priceField" placeholder="price"></label>
+              <label><span class="mini-label">Field đơn vị</span><input class="input" name="unitField" placeholder="unit"></label>
+              <label><span class="mini-label">Field mô tả</span><input class="input" name="descriptionField" placeholder="description"></label>
+              <label><span class="mini-label">Field tags</span><input class="input" name="tagsField" placeholder="tags"></label>
+              <label><span class="mini-label">Field featured</span><input class="input" name="featuredField" placeholder="featured"></label>
+              <label><span class="mini-label">Field status</span><input class="input" name="statusField" placeholder="status"></label>
+              <label class="span-2"><span class="mini-label">Bật cấu hình này</span><div class="utility-pill"><input type="checkbox" name="enabled"> <span>Dùng endpoint hiện tại</span></div></label>
+              <div class="span-2 integration-actions"><button class="btn primary" type="submit">Lưu cấu hình API</button><button class="btn secondary" type="button" data-sync-services>Đồng bộ thử dịch vụ</button></div>
+            </form>
+          </article>
+          <article class="wallet-card sticky-card" data-admin-integration-preview></article>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <nav class="mobile-nav admin-mobile-nav" data-admin-mobile-nav></nav>
+  <footer class="footer" data-footer></footer>
+  <div id="toast" class="toast hidden"></div>
+  <div class="modal-backdrop hidden" data-global-modal></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>
