@@ -1,0 +1,4 @@
+node_modules/
+mnt/data/pth_digital_refactor/backend/node_modules/
+mnt/data/pth_digital_refactor/backend/data/
+.env
