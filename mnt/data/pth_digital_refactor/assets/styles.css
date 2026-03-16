@@ -389,6 +389,339 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;background:ra
 .report-card{display:grid;align-content:start}
 .table .cell-muted{margin-top:4px;line-height:1.5}
 #admin-service-form label{display:grid;gap:8px}
+.mobile-menu-toggle,
+.mobile-drawer-close,
+.mobile-drawer-backdrop,
+.home-mobile-drawer {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    backdrop-filter: blur(18px);
+  }
+
+  .navbar,
+  .topbar {
+    padding: 12px 0;
+    gap: 10px;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    gap: 4px;
+  }
+
+  .mobile-menu-toggle span {
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: #fff;
+    display: block;
+  }
+
+  .brand-link {
+    gap: 10px;
+  }
+
+  .brand-link img {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .brand-copy strong {
+    font-size: 14px;
+  }
+
+  .brand-copy span {
+    display: none;
+  }
+
+  .nav-links {
+    display: none !important;
+  }
+
+  .utility-bar {
+    margin-left: auto;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .utility-pill,
+  .icon-pill,
+  .profile-pill,
+  .search-pill,
+  .balance-pill {
+    min-height: 46px;
+  }
+
+  .balance-pill {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .balance-pill span {
+    display: none;
+  }
+
+  .balance-pill strong {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .mini-round {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+
+  .icon-pill,
+  .profile-pill {
+    width: 46px;
+    min-width: 46px;
+    font-size: 18px;
+  }
+
+  .dashboard-shell,
+  .auth-shell {
+    padding: 14px 0 94px;
+  }
+
+  .hero {
+    padding-top: 22px;
+  }
+
+  .hero-copy.big h1,
+  .hero-copy h1 {
+    font-size: clamp(34px, 9vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -.03em;
+  }
+
+  .hero-copy p,
+  .page-hero p,
+  .section-head p {
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .hero-actions,
+  .page-tools {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+  }
+
+  .hero-actions .btn,
+  .page-tools .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .trust-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-card,
+  .card,
+  .shell-card,
+  .info-card,
+  .wallet-card,
+  .portal-card,
+  .table-card-simple,
+  .sidebar-card,
+  .chat-window,
+  .profile-preview,
+  .auth-intro,
+  .auth-panel,
+  .sub-card,
+  .message-card,
+  .summary-item {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .dashboard-grid,
+  .admin-shell-grid,
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(86vw, 340px);
+    z-index: 120;
+    transform: translateX(-104%);
+    transition: transform .28s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px;
+    border-radius: 0 24px 24px 0;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    align-self: stretch;
+  }
+
+  body.drawer-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 10, 20, .68);
+    backdrop-filter: blur(6px);
+    z-index: 110;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .24s ease;
+    display: block;
+  }
+
+  body.drawer-open .mobile-drawer-backdrop,
+  body.home-drawer-open .mobile-drawer-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-drawer-close {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    margin-left: auto;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    color: #fff;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .sidebar .user-panel {
+    padding-right: 0;
+  }
+
+  .sidebar .nav-stack {
+    gap: 8px;
+  }
+
+  .sidebar .side-link {
+    padding: 14px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+
+  .home-mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(84vw, 340px);
+    z-index: 120;
+    transform: translateX(-104%);
+    transition: transform .28s ease;
+    padding: 18px;
+    overflow-y: auto;
+    border-radius: 0 24px 24px 0;
+    background: linear-gradient(180deg, rgba(10,18,32,.98), rgba(7,13,24,.98));
+    border-right: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    display: block;
+  }
+
+  body.home-drawer-open .home-mobile-drawer {
+    transform: translateX(0);
+  }
+
+  .home-mobile-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .home-mobile-drawer-head strong {
+    font-size: 18px;
+  }
+
+  .home-mobile-drawer-links {
+    display: grid;
+    gap: 10px;
+  }
+
+  .home-mobile-drawer-links a {
+    display: block;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.03);
+    color: #dce9ff;
+    font-weight: 700;
+  }
+
+  .summary-grid,
+  .kpi-grid,
+  .quick-links,
+  .portal-grid,
+  .about-grid,
+  .service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 720px;
+  }
+
+  .chat-messages {
+    max-height: 420px;
+  }
+
+  .mobile-nav {
+    display: grid;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 8px;
+    gap: 6px;
+    border-radius: 18px;
+  }
+
+  .mobile-nav a {
+    padding: 10px 6px;
+    font-size: 10px;
+  }
+
+  .mobile-nav .icon {
+    font-size: 17px;
+  }
+
+  .footer {
+    padding-bottom: 100px;
+  }
+}
 #admin-service-form .textarea{min-height:150px}
 @media (max-width:1120px){
   .service-form-layout{grid-template-columns:1fr}

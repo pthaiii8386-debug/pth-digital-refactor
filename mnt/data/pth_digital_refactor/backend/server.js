@@ -18,6 +18,8 @@ const dbPath = path.join(dataDir, 'app-db.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'pth-digital-enterprise-secret';
 const PORT = Number(process.env.PORT || 3000);
 const COOKIE_NAME = 'pth_auth';
+const TINOTP_BASE_URL = process.env.TINOTP_BASE_URL || 'https://tinotp.site/api';
+const TINOTP_API_KEY = process.env.TINOTP_API_KEY || '';
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(reportsDir, { recursive: true });
@@ -115,21 +117,21 @@ function seedDb() {
       name: 'PTH DIGITAL',
       slogan: 'Nền tảng dịch vụ số chuyên nghiệp cho doanh nghiệp',
       about: 'Website dịch vụ số có cổng đăng nhập rõ ràng, khu khách hàng tách trang, khu admin đầy đủ chức năng và giao diện tối ưu tốt trên desktop lẫn điện thoại.',
-      adminName: 'Hải Phạm',
+      adminName: 'THANH HẢI',
       adminTitle: 'Founder & Digital Operations Lead',
       supportEmail: 'support@pthdigital.vn',
       supportPhone: '0901 234 567',
-      address: 'Hồ Chí Minh, Việt Nam',
+      address: 'Quảng Trị, Việt Nam',
       trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.',
-      websiteEmail: 'hello@pthdigital.vn',
-      websiteAddress: 'Quận 1, TP.HCM',
+      websiteEmail: 'support@pthdigital.vn',
+      websiteAddress: 'Quảng Trị, Việt Nam',
       websitePhone: '0901 234 567'
     },
     payment: {
-      bankName: 'Vietcombank',
-      accountName: 'PTH DIGITAL',
-      accountNumber: '0123456789',
-      minDeposit: 50000,
+      bankName: 'MB BANK',
+      accountName: 'PHAM THANH HAI',
+      accountNumber: '9201283869999',
+      minDeposit: 20000,
       note: 'Chuyển khoản đúng nội dung để admin duyệt nhanh hơn. Số tiền thấp hơn mức khuyến nghị vẫn có thể tạo yêu cầu.',
       qrImage: ''
     },
@@ -539,6 +541,46 @@ async function syncExternalServices(db) {
   return { changed, skipped: false };
 }
 
+async function callTinOtp(path, method = 'GET', params = {}, body = null) {
+  if (!TINOTP_API_KEY) {
+    throw new Error('TINOTP_API_KEY is missing');
+  }
+
+  const url = new URL(`${TINOTP_BASE_URL}${path}`);
+  url.searchParams.set('api_key', TINOTP_API_KEY);
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value);
+    }
+  });
+
+  const options = {
+    method,
+    headers: {
+      'Accept': 'application/json'
+    }
+  };
+
+  if (body && method !== 'GET') {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url.toString(), options);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data?.message || `TinOTP error ${response.status}`);
+  }
+
+  if (data && data.success === false) {
+    throw new Error(data.message || 'TinOTP request failed');
+  }
+
+  return data;
+}
+
 const app = express();
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
@@ -762,6 +804,117 @@ cron.schedule('*/15 * * * *', async () => {
     if (db.integration.enabled && db.integration.endpoint && due) await syncExternalServices(db);
   } catch (error) {
     console.error('Cron sync failed:', error.message);
+  }
+});
+
+// =========================
+// TinOTP Integration Routes
+// =========================
+
+app.get('/api/tinotp/categories', async (req, res) => {
+  try {
+    const data = await callTinOtp('/services/categories', 'GET');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/tinotp/services', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const data = await callTinOtp('/services', 'GET', { category });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/tinotp/balance', async (req, res) => {
+  try {
+    const data = await callTinOtp('/services/balance', 'GET');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/tinotp/rentals', async (req, res) => {
+  try {
+    const { limit } = req.query;
+    const data = await callTinOtp('/services/rentals', 'GET', { limit: limit || 20 });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tinotp/rent', async (req, res) => {
+  try {
+    const { service_id, category } = req.body || {};
+    const data = await callTinOtp('/services/rent', 'GET', { service_id, category });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/tinotp/check', async (req, res) => {
+  try {
+    const { rental_id } = req.query;
+    const data = await callTinOtp('/services/check', 'GET', { rental_id });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tinotp/cancel', async (req, res) => {
+  try {
+    const { rental_id } = req.body || {};
+    const data = await callTinOtp('/services/cancel', 'POST', { rental_id });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Mail Rental
+app.get('/api/tinotp/mail/services', async (req, res) => {
+  try {
+    const data = await callTinOtp('/mail/services', 'GET');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/tinotp/mail/active', async (req, res) => {
+  try {
+    const data = await callTinOtp('/mail/active', 'GET');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tinotp/mail/get', async (req, res) => {
+  try {
+    const { serviceId, domain } = req.body || {};
+    const data = await callTinOtp('/mail/get', 'GET', { serviceId, domain });
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tinotp/mail/code', async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    const data = await callTinOtp(`/mail/${id}/code`, 'POST');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 

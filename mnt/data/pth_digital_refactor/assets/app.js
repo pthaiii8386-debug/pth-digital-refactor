@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'pthDigitalEnterprise';
 const LEGACY_STORAGE_KEYS = ['pthDigitalEnterpriseV6','pthDigitalEnterpriseV5','pthDigitalEnterpriseV4','pthDigitalEnterpriseV3'];
 const CURRENT_USER_KEY = 'pthDigitalCurrentUser';
+const CONFIG_SYNC_VERSION = '2026-03-15-company-payment-v2';
 
 const DEFAULT_STATE = {
   company: {
@@ -239,6 +240,15 @@ function cloneDefaultState() {
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
 
+function syncCompanyAndPaymentFromCode(state) {
+  const base = cloneDefaultState();
+  return {
+    ...state,
+    company: { ...base.company },
+    payment: { ...base.payment }
+  };
+}
+
 function deepMerge(defaultValue, currentValue) {
   if (Array.isArray(defaultValue)) return Array.isArray(currentValue) ? currentValue : defaultValue;
   if (defaultValue && typeof defaultValue === 'object') {
@@ -296,16 +306,39 @@ function loadBootstrap(force = false) {
 }
 
 function getState() {
-  return loadBootstrap().state;
+  const raw = localStorage.getItem(STORAGE_KEY);
+
+  if (!raw) {
+    const seeded = cloneDefaultState();
+    saveState(seeded);
+    localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
+    return seeded;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    let normalized = normalizeState(parsed);
+
+    const savedConfigVersion = localStorage.getItem(`${STORAGE_KEY}_config_version`);
+    if (savedConfigVersion !== CONFIG_SYNC_VERSION) {
+      normalized = syncCompanyAndPaymentFromCode(normalized);
+      saveState(normalized);
+      localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
+    } else if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+      saveState(normalized);
+    }
+
+    return normalized;
+  } catch (error) {
+    const seeded = cloneDefaultState();
+    saveState(seeded);
+    localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
+    return seeded;
+  }
 }
 
 function saveState(state) {
-  APP_STATE = deepMerge(cloneDefaultState(), state || {});
-  const payload = apiRequestSync('POST', '/api/state', { state: APP_STATE });
-  if (payload?.state) APP_STATE = deepMerge(cloneDefaultState(), payload.state);
-  if (payload?.currentUser !== undefined) APP_USER = payload.currentUser;
-  if (payload?.permissions) APP_PERMISSIONS = payload.permissions;
-  return APP_STATE;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function getCurrentUser() {
@@ -394,6 +427,126 @@ function showToast(message, type = 'info') {
   toast.textContent = message;
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), 2600);
+}
+
+let mobileUiBound = false;
+
+function setupMobileEnterpriseUI() {
+  if (mobileUiBound) return;
+  mobileUiBound = true;
+
+  const body = document.body;
+  const headerBar = document.querySelector('.topbar, .navbar');
+  if (!headerBar) return;
+
+  let backdrop = document.querySelector('.mobile-drawer-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'mobile-drawer-backdrop';
+    document.body.appendChild(backdrop);
+  }
+
+  const closeAllDrawers = () => {
+    body.classList.remove('drawer-open');
+    body.classList.remove('home-drawer-open');
+  };
+
+  const bindBackdrop = () => {
+    if (backdrop.dataset.bound === '1') return;
+    backdrop.dataset.bound = '1';
+    backdrop.addEventListener('click', closeAllDrawers);
+  };
+
+  bindBackdrop();
+
+  const ensureMenuButton = (mode = 'sidebar') => {
+    let toggle = headerBar.querySelector('.mobile-menu-toggle');
+    if (!toggle) {
+      toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'mobile-menu-toggle';
+      toggle.setAttribute('aria-label', 'Mở menu');
+      toggle.innerHTML = `
+        <span></span>
+        <span></span>
+        <span></span>
+      `;
+      headerBar.insertBefore(toggle, headerBar.firstChild);
+    }
+
+    if (toggle.dataset.bound !== '1') {
+      toggle.dataset.bound = '1';
+      toggle.addEventListener('click', () => {
+        if (mode === 'home') {
+          body.classList.add('home-drawer-open');
+        } else {
+          body.classList.add('drawer-open');
+        }
+      });
+    }
+  };
+
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    ensureMenuButton('sidebar');
+
+    if (!sidebar.querySelector('.mobile-drawer-close')) {
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'mobile-drawer-close';
+      closeBtn.setAttribute('aria-label', 'Đóng menu');
+      closeBtn.textContent = '×';
+      sidebar.insertBefore(closeBtn, sidebar.firstChild);
+      closeBtn.addEventListener('click', closeAllDrawers);
+    }
+
+    sidebar.querySelectorAll('a').forEach(link => {
+      if (link.dataset.mobileCloseBound === '1') return;
+      link.dataset.mobileCloseBound = '1';
+      link.addEventListener('click', () => {
+        closeAllDrawers();
+      });
+    });
+  } else {
+    const navLinks = document.querySelector('.nav-links');
+    if (navLinks) {
+      ensureMenuButton('home');
+
+      let homeDrawer = document.querySelector('.home-mobile-drawer');
+      if (!homeDrawer) {
+        homeDrawer = document.createElement('aside');
+        homeDrawer.className = 'home-mobile-drawer';
+        homeDrawer.innerHTML = `
+          <div class="home-mobile-drawer-head">
+            <strong>Menu</strong>
+            <button type="button" class="mobile-drawer-close" aria-label="Đóng menu">×</button>
+          </div>
+          <div class="nav-stack home-mobile-drawer-links"></div>
+        `;
+        document.body.appendChild(homeDrawer);
+
+        const closeBtn = homeDrawer.querySelector('.mobile-drawer-close');
+        closeBtn.addEventListener('click', closeAllDrawers);
+      }
+
+      const drawerLinks = homeDrawer.querySelector('.home-mobile-drawer-links');
+      drawerLinks.innerHTML = navLinks.innerHTML;
+
+      drawerLinks.querySelectorAll('a').forEach(link => {
+        if (link.dataset.mobileCloseBound === '1') return;
+        link.dataset.mobileCloseBound = '1';
+        link.addEventListener('click', () => {
+          closeAllDrawers();
+        });
+      });
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 860) {
+      closeAllDrawers();
+    }
+  });
 }
 
 function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
@@ -1985,19 +2138,28 @@ function renderAdminCompanySettings(state) {
 }
 
 function init() {
-  loadBootstrap(true);
   renderBrand();
   renderFooter();
-  const page = getPage();
-  if (page === 'entry') renderEntryPage();
-  if (page === 'auth') renderAuthPage();
+
+  const page = document.body.dataset.page || 'home';
+  if (page === 'home') renderHome();
+  if (page === 'auth') renderAuth();
   if (page === 'customer-overview') renderCustomerOverview();
   if (page === 'customer-services') renderServicesPage();
   if (page === 'customer-wallet') renderWalletPage();
   if (page === 'customer-history') renderHistoryPage();
   if (page === 'customer-profile') renderProfilePage();
   if (page === 'customer-support') renderSupportPage();
-  if (page.startsWith('admin')) renderAdminCurrentPage();
+  if (page === 'admin') renderAdminPage();
+
+  setupMobileEnterpriseUI();
 }
+
+window.forceResetPthConfig = function () {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(`${STORAGE_KEY}_config_version`);
+  localStorage.removeItem(CURRENT_USER_KEY);
+  window.location.reload();
+};
 
 document.addEventListener('DOMContentLoaded', init);
