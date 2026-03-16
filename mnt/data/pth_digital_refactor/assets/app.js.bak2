@@ -651,19 +651,19 @@ function renderFooter() {
   });
 }
 
-function ensureAccess(page) {
+function ensureAccess(role) {
   const currentUser = getCurrentUser();
-  if (page.startsWith('customer')) {
-    if (!currentUser || currentUser.role !== 'customer') {
-      window.location.href = '../auth/index.html';
+  const staffRoles = ['admin', 'support', 'accountant'];
+  if (role === 'admin') {
+    if (!currentUser || !staffRoles.includes(currentUser.role)) {
+      window.location.href = routeTo('auth/index.html');
       return null;
     }
+    return currentUser;
   }
-  if (page.startsWith('admin')) {
-    if (!currentUser || currentUser.role !== 'admin') {
-      window.location.href = '../auth/index.html';
-      return null;
-    }
+  if (!currentUser || currentUser.role != role) {
+    window.location.href = routeTo('auth/index.html');
+    return null;
   }
   return currentUser;
 }
@@ -902,7 +902,7 @@ function setText(selector, value) {
 }
 
 function renderCustomerShell(currentFile) {
-  const user = ensureAccess(getPage());
+  const user = ensureAccess('customer');
   if (!user) return null;
 
   setText('[data-customer-name]', user.fullName);
@@ -2030,7 +2030,7 @@ function renderAdminChat(state) {
 }
 
 function renderAdminShell(currentKey) {
-  const admin = ensureAccess(getPage());
+  const admin = ensureAccess('admin');
   if (!admin) return null;
 
   setText('[data-admin-name]', admin.fullName);
@@ -2281,7 +2281,7 @@ async function init() {
   if (page === 'customer-history') renderHistoryPage();
   if (page === 'customer-profile') renderProfilePage();
   if (page === 'customer-support') renderSupportPage();
-  if (page.startsWith('admin')) renderAdminPage();
+  if (page === 'admin') renderAdminPage();
 
   if (typeof setupMobileEnterpriseUI === 'function') {
     setupMobileEnterpriseUI();
