@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'pthDigitalEnterprise';
 const LEGACY_STORAGE_KEYS = ['pthDigitalEnterpriseV6','pthDigitalEnterpriseV5','pthDigitalEnterpriseV4','pthDigitalEnterpriseV3'];
 const CURRENT_USER_KEY = 'pthDigitalCurrentUser';
-const CONFIG_SYNC_VERSION = '2026-03-15-company-payment-v2';
+const CONFIG_SYNC_VERSION = '2026-03-16-company-payment-v3';
 
 const DEFAULT_STATE = {
   company: {

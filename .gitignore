@@ -1,4 +1,6 @@
 node_modules/
 mnt/data/pth_digital_refactor/backend/node_modules/
-mnt/data/pth_digital_refactor/backend/data/
-.env
+mnt/data/pth_digital_refactor/backend/reports/
+mnt/data/pth_digital_refactor/backend/.env
+mnt/data/pth_digital_refactor/backend/data/*
+!mnt/data/pth_digital_refactor/backend/data/app-db.json
