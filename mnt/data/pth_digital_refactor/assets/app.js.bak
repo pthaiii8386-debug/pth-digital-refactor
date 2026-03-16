@@ -1,25 +1,43 @@
-const STORAGE_KEY = 'pthDigitalEnterpriseV6';
+const STORAGE_KEY = 'pthDigitalEnterprise';
+const LEGACY_STORAGE_KEYS = ['pthDigitalEnterpriseV6','pthDigitalEnterpriseV5','pthDigitalEnterpriseV4','pthDigitalEnterpriseV3'];
 const CURRENT_USER_KEY = 'pthDigitalCurrentUser';
+const CONFIG_SYNC_VERSION = '2026-03-15-company-payment-v2';
 
 const DEFAULT_STATE = {
   company: {
     name: 'PTH DIGITAL',
     slogan: 'Nền tảng dịch vụ số chuyên nghiệp cho doanh nghiệp',
     about: 'Website dịch vụ số có cổng đăng nhập rõ ràng, khu khách hàng tách trang, khu admin đầy đủ chức năng và giao diện tối ưu tốt trên desktop lẫn điện thoại.',
-    adminName: 'Hải Phạm',
+    adminName: 'THANH HẢI',
     adminTitle: 'Founder & Digital Operations Lead',
     supportEmail: 'support@pthdigital.vn',
+    supportTelegram: 'https://t.me/Mmo_white',
     supportPhone: '0901 234 567',
-    address: 'Hồ Chí Minh, Việt Nam',
+    address: 'Quảng Trị, Việt Nam',
     trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.'
   },
   payment: {
-    bankName: 'Vietcombank',
-    accountName: 'PTH DIGITAL',
-    accountNumber: '0123456789',
-    minDeposit: 50000,
+    bankName: 'MB BANK',
+    accountName: 'PHAM THANH HAI',
+    accountNumber: '9201283869999',
+    minDeposit: 20000,
     note: 'Chuyển khoản đúng nội dung để admin duyệt nhanh hơn. Số tiền thấp hơn mức khuyến nghị vẫn có thể tạo yêu cầu.',
     qrImage: ''
+  },
+  integration: {
+    enabled: false,
+    endpoint: '',
+    apiKey: '',
+    authType: 'bearer',
+    servicePath: '',
+    nameField: 'name',
+    categoryField: 'category',
+    priceField: 'price',
+    unitField: 'unit',
+    descriptionField: 'description',
+    tagsField: 'tags',
+    featuredField: 'featured',
+    statusField: 'status'
   },
   users: [
     {
@@ -27,10 +45,10 @@ const DEFAULT_STATE = {
       role: 'admin',
       username: 'admin',
       password: 'Admin@123',
-      fullName: 'Hải Phạm',
+      fullName: 'THANH HẢI',
       email: 'admin@pthdigital.vn',
       phone: '0901 234 567',
-      address: 'Hồ Chí Minh',
+      address: 'Quảng Trị, Việt Nam',
       balance: 0,
       bio: 'Tài khoản quản trị hệ thống.',
       avatar: ''
@@ -189,6 +207,19 @@ const CUSTOMER_NAV = [
   { href: 'support.html', label: 'Live chat', icon: '💬' }
 ];
 
+const ADMIN_NAV = [
+  { href: 'index.html', key: 'admin-overview', label: 'Tổng quan', icon: '📊' },
+  { href: 'services.html', key: 'admin-services', label: 'Dịch vụ', icon: '🧩' },
+  { href: 'customers.html', key: 'admin-customers', label: 'Khách hàng', icon: '👥' },
+  { href: 'payment.html', key: 'admin-payment', label: 'Thanh toán', icon: '💳' },
+  { href: 'chat.html', key: 'admin-chat', label: 'Live chat', icon: '💬' },
+  { href: 'settings.html', key: 'admin-settings', label: 'Doanh nghiệp', icon: '⚙️' }
+];
+
+let APP_STATE = null;
+let APP_USER = null;
+let APP_PERMISSIONS = [];
+
 function getPage() {
   return document.body.dataset.page || 'entry';
 }
@@ -209,40 +240,141 @@ function cloneDefaultState() {
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
 
+let appStateCache = null;
+let currentUserCache = null;
+let bootstrapPromise = null;
+
+function setStateCache(state, currentUser = null) {
+  appStateCache = JSON.parse(JSON.stringify(state || cloneDefaultState()));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appStateCache));
+
+  if (currentUser && currentUser.username) {
+    currentUserCache = currentUser;
+    localStorage.setItem(CURRENT_USER_KEY, currentUser.username);
+  } else {
+    currentUserCache = null;
+    localStorage.removeItem(CURRENT_USER_KEY);
+  }
+}
+
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Yêu cầu thất bại.');
+  }
+
+  return data;
+}
+
+async function bootstrapState(force = false) {
+  if (bootstrapPromise && !force) return bootstrapPromise;
+
+  bootstrapPromise = apiRequest('/api/bootstrap')
+    .then(payload => {
+      setStateCache(payload.state || cloneDefaultState(), payload.currentUser || null);
+      return payload;
+    })
+    .catch(() => {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      appStateCache = raw ? JSON.parse(raw) : cloneDefaultState();
+
+      const username = localStorage.getItem(CURRENT_USER_KEY);
+      currentUserCache = username
+        ? appStateCache.users.find(user => user.username === username) || null
+        : null;
+
+      return {
+        state: appStateCache,
+        currentUser: currentUserCache
+      };
+    })
+    .finally(() => {
+      bootstrapPromise = null;
+    });
+
+  return bootstrapPromise;
+}
+
 function getState() {
+  if (appStateCache) return appStateCache;
+
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
     const seeded = cloneDefaultState();
-    saveState(seeded);
+    setStateCache(seeded, null);
     return seeded;
   }
+
   try {
-    return JSON.parse(raw);
+    appStateCache = JSON.parse(raw);
+    return appStateCache;
   } catch (error) {
     const seeded = cloneDefaultState();
-    saveState(seeded);
+    setStateCache(seeded, null);
     return seeded;
   }
 }
 
 function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const currentUser = getCurrentUser();
+  setStateCache(state, currentUser);
+
+  if (!currentUser) return;
+
+  apiRequest('/api/state', {
+    method: 'POST',
+    body: JSON.stringify({ state })
+  })
+    .then(payload => {
+      setStateCache(payload.state || state, payload.currentUser || currentUser);
+    })
+    .catch(error => {
+      console.error('Lỗi đồng bộ state:', error);
+      showToast(error.message || 'Không đồng bộ được dữ liệu lên server.', 'error');
+    });
 }
 
 function getCurrentUser() {
+  if (currentUserCache) return currentUserCache;
+
   const username = localStorage.getItem(CURRENT_USER_KEY);
   if (!username) return null;
+
   const state = getState();
-  return state.users.find(user => user.username === username) || null;
+  currentUserCache = state.users.find(user => user.username === username) || null;
+  return currentUserCache;
 }
 
 function setCurrentUser(username) {
-  localStorage.setItem(CURRENT_USER_KEY, username);
+  const state = getState();
+  const found = state.users.find(user => user.username === username) || null;
+  currentUserCache = found;
+  if (found) {
+    localStorage.setItem(CURRENT_USER_KEY, found.username);
+  }
 }
 
-function logout() {
+async function logout() {
+  try {
+    await apiRequest('/api/auth/logout', { method: 'POST' });
+  } catch (error) {
+    console.warn('Logout backend lỗi, vẫn tiếp tục logout local:', error);
+  }
+
   localStorage.removeItem(CURRENT_USER_KEY);
-  window.location.href = routeTo('auth/index.html');
+  currentUserCache = null;
+  window.location.href = '../auth/index.html';
 }
 
 function nowString() {
@@ -263,6 +395,16 @@ function initials(name) {
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+}
+
+function getNestedValue(obj, path) {
+  return String(path || '').split('.').filter(Boolean).reduce((acc, key) => (acc && typeof acc === 'object') ? acc[key] : undefined, obj);
+}
+
+function rerenderPage() {
+  const page = getPage();
+  if (page.startsWith('admin')) return renderAdminCurrentPage();
+  window.location.reload();
 }
 
 function statusBadge(status) {
@@ -305,6 +447,182 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.classList.add('hidden'), 2600);
 }
 
+function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
+  if (!button) return;
+
+  if (busy) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-busy');
+    button.innerHTML = busyText;
+    return;
+  }
+
+  button.disabled = false;
+  button.classList.remove('is-busy');
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function refreshCurrentView() {
+  window.location.reload();
+}
+
+let mobileUiBound = false;
+
+function setupMobileEnterpriseUI() {
+  if (mobileUiBound) return;
+  mobileUiBound = true;
+
+  const body = document.body;
+  const headerBar = document.querySelector('.topbar, .navbar');
+  if (!headerBar) return;
+
+  let backdrop = document.querySelector('.mobile-drawer-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'mobile-drawer-backdrop';
+    document.body.appendChild(backdrop);
+  }
+
+  const closeAllDrawers = () => {
+    body.classList.remove('drawer-open');
+    body.classList.remove('home-drawer-open');
+  };
+
+  const bindBackdrop = () => {
+    if (backdrop.dataset.bound === '1') return;
+    backdrop.dataset.bound = '1';
+    backdrop.addEventListener('click', closeAllDrawers);
+  };
+
+  bindBackdrop();
+
+  const ensureMenuButton = (mode = 'sidebar') => {
+    let toggle = headerBar.querySelector('.mobile-menu-toggle');
+    if (!toggle) {
+      toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'mobile-menu-toggle';
+      toggle.setAttribute('aria-label', 'Mở menu');
+      toggle.innerHTML = `
+        <span></span>
+        <span></span>
+        <span></span>
+      `;
+      headerBar.insertBefore(toggle, headerBar.firstChild);
+    }
+
+    if (toggle.dataset.bound !== '1') {
+      toggle.dataset.bound = '1';
+      toggle.addEventListener('click', () => {
+        if (mode === 'home') {
+          body.classList.add('home-drawer-open');
+        } else {
+          body.classList.add('drawer-open');
+        }
+      });
+    }
+  };
+
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    ensureMenuButton('sidebar');
+
+    if (!sidebar.querySelector('.mobile-drawer-close')) {
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'mobile-drawer-close';
+      closeBtn.setAttribute('aria-label', 'Đóng menu');
+      closeBtn.textContent = '×';
+      sidebar.insertBefore(closeBtn, sidebar.firstChild);
+      closeBtn.addEventListener('click', closeAllDrawers);
+    }
+
+    sidebar.querySelectorAll('a').forEach(link => {
+      if (link.dataset.mobileCloseBound === '1') return;
+      link.dataset.mobileCloseBound = '1';
+      link.addEventListener('click', () => {
+        closeAllDrawers();
+      });
+    });
+  } else {
+    const navLinks = document.querySelector('.nav-links');
+    if (navLinks) {
+      ensureMenuButton('home');
+
+      let homeDrawer = document.querySelector('.home-mobile-drawer');
+      if (!homeDrawer) {
+        homeDrawer = document.createElement('aside');
+        homeDrawer.className = 'home-mobile-drawer';
+        homeDrawer.innerHTML = `
+          <div class="home-mobile-drawer-head">
+            <strong>Menu</strong>
+            <button type="button" class="mobile-drawer-close" aria-label="Đóng menu">×</button>
+          </div>
+          <div class="nav-stack home-mobile-drawer-links"></div>
+        `;
+        document.body.appendChild(homeDrawer);
+
+        const closeBtn = homeDrawer.querySelector('.mobile-drawer-close');
+        closeBtn.addEventListener('click', closeAllDrawers);
+      }
+
+      const drawerLinks = homeDrawer.querySelector('.home-mobile-drawer-links');
+      drawerLinks.innerHTML = navLinks.innerHTML;
+
+      drawerLinks.querySelectorAll('a').forEach(link => {
+        if (link.dataset.mobileCloseBound === '1') return;
+        link.dataset.mobileCloseBound = '1';
+        link.addEventListener('click', () => {
+          closeAllDrawers();
+        });
+      });
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 860) {
+      closeAllDrawers();
+    }
+  });
+}
+
+function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
+  if (!button) return;
+  if (busy) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-busy');
+    button.innerHTML = busyText;
+    return;
+  }
+  button.disabled = false;
+  button.classList.remove('is-busy');
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function refreshCurrentView() {
+  const page = document.body?.dataset?.page || '';
+  if (page.startsWith('admin')) {
+    if (typeof initAdminPage === 'function') initAdminPage();
+    return;
+  }
+  if (page.startsWith('customer')) {
+    if (typeof initCustomerPage === 'function') initCustomerPage();
+    return;
+  }
+  window.location.reload();
+}
+
 function renderBrand() {
   const state = getState();
   document.querySelectorAll('[data-brand]').forEach(el => {
@@ -341,7 +659,15 @@ function renderFooter() {
 
 function ensureAccess(role) {
   const currentUser = getCurrentUser();
-  if (!currentUser || currentUser.role !== role) {
+  const staffRoles = ['admin', 'support', 'accountant'];
+  if (role === 'admin') {
+    if (!currentUser || !staffRoles.includes(currentUser.role)) {
+      window.location.href = routeTo('auth/index.html');
+      return null;
+    }
+    return currentUser;
+  }
+  if (!currentUser || currentUser.role != role) {
     window.location.href = routeTo('auth/index.html');
     return null;
   }
@@ -349,7 +675,7 @@ function ensureAccess(role) {
 }
 
 function redirectForRole(user) {
-  window.location.href = user.role === 'admin' ? routeTo('admin/index.html') : routeTo('customer/index.html');
+  window.location.href = ['admin', 'support', 'accountant'].includes(user.role) ? routeTo('admin/index.html') : routeTo('customer/index.html');
 }
 
 function getModalRoot() {
@@ -426,26 +752,27 @@ function bindAuthForms() {
 
   const loginForm = document.getElementById('login-form');
   if (loginForm) {
-    loginForm.addEventListener('submit', event => {
+    loginForm.addEventListener('submit', async event => {
       event.preventDefault();
       const data = new FormData(loginForm);
-      const identifier = String(data.get('identifier') || '').trim().toLowerCase();
-      const password = String(data.get('password') || '');
-      const state = getState();
-      const user = state.users.find(item => (item.username.toLowerCase() === identifier || item.email.toLowerCase() === identifier) && item.password === password);
-      if (!user) {
-        showToast('Sai thông tin đăng nhập.', 'error');
-        return;
+      try {
+        const payload = await apiRequest('POST', '/api/auth/login', {
+          identifier: String(data.get('identifier') || '').trim(),
+          password: String(data.get('password') || '')
+        });
+        setCurrentUser(payload.user.username);
+        await bootstrapState(true);
+        showToast('Đăng nhập thành công.', 'success');
+        window.location.href = payload.user.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
+      } catch (error) {
+        showToast(error.message || 'Sai thông tin đăng nhập.', 'error');
       }
-      setCurrentUser(user.username);
-      showToast('Đăng nhập thành công.', 'success');
-      setTimeout(() => redirectForRole(user), 500);
     });
   }
 
   const registerForm = document.getElementById('register-form');
   if (registerForm) {
-    registerForm.addEventListener('submit', event => {
+    registerForm.addEventListener('submit', async event => {
       event.preventDefault();
       const data = new FormData(registerForm);
       const password = String(data.get('password') || '');
@@ -454,32 +781,22 @@ function bindAuthForms() {
         showToast('Mật khẩu nhập lại chưa khớp.', 'error');
         return;
       }
-      const username = String(data.get('username') || '').trim();
-      const email = String(data.get('email') || '').trim().toLowerCase();
-      const state = getState();
-      const exists = state.users.some(user => user.username.toLowerCase() === username.toLowerCase() || user.email.toLowerCase() === email);
-      if (exists) {
-        showToast('Username hoặc email đã tồn tại.', 'error');
-        return;
+      try {
+        const payload = await apiRequest('POST', '/api/auth/register', {
+          fullName: String(data.get('fullName') || '').trim(),
+          username: String(data.get('username') || '').trim(),
+          email: String(data.get('email') || '').trim().toLowerCase(),
+          phone: String(data.get('phone') || '').trim(),
+          address: String(data.get('address') || '').trim(),
+          password
+        });
+        setCurrentUser(payload.user.username);
+        await bootstrapState(true);
+        showToast('Đăng ký thành công.', 'success');
+        window.location.href = '../customer/index.html';
+      } catch (error) {
+        showToast(error.message || 'Đăng ký thất bại.', 'error');
       }
-      const newUser = {
-        id: `u${Date.now()}`,
-        role: 'customer',
-        username,
-        password,
-        fullName: String(data.get('fullName') || '').trim(),
-        email,
-        phone: String(data.get('phone') || '').trim(),
-        address: String(data.get('address') || '').trim(),
-        balance: 0,
-        bio: '',
-        avatar: ''
-      };
-      state.users.push(newUser);
-      saveState(state);
-      setCurrentUser(newUser.username);
-      showToast('Đăng ký thành công.', 'success');
-      setTimeout(() => redirectForRole(newUser), 500);
     });
   }
 }
@@ -489,8 +806,99 @@ function renderEntryPage() {
   bindAuthForms();
 }
 
-function renderAuthPage() {
-  bindAuthForms();
+function renderAuth() {
+  const currentUser = getCurrentUser();
+  if (currentUser) {
+    window.location.href = currentUser.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
+    return;
+  }
+
+  const buttons = document.querySelectorAll('[data-auth-tab-btn]');
+  const panes = document.querySelectorAll('[data-auth-tab]');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.authTabBtn;
+      buttons.forEach(button => button.classList.toggle('active', button === btn));
+      panes.forEach(pane => pane.classList.toggle('hidden', pane.dataset.authTab !== key));
+    });
+  });
+
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      setButtonBusy(submitBtn, true, 'Đang đăng nhập...');
+
+      try {
+        const formData = new FormData(loginForm);
+        const identifier = String(formData.get('identifier') || '').trim();
+        const password = String(formData.get('password') || '');
+
+        const result = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ identifier, password })
+        });
+
+        await bootstrapState(true);
+
+        if (result.user?.username) {
+          setCurrentUser(result.user.username);
+        }
+
+        showToast('Đăng nhập thành công.', 'success');
+        window.location.href = result.user?.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
+      } catch (error) {
+        setButtonBusy(submitBtn, false);
+        showToast(error.message || 'Sai thông tin đăng nhập.', 'error');
+      }
+    });
+  }
+
+  const registerForm = document.getElementById('register-form');
+  if (registerForm) {
+    registerForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
+      setButtonBusy(submitBtn, true, 'Đang tạo tài khoản...');
+
+      try {
+        const data = new FormData(registerForm);
+        const password = String(data.get('password') || '');
+        const confirmPassword = String(data.get('confirmPassword') || '');
+
+        if (password !== confirmPassword) {
+          throw new Error('Mật khẩu nhập lại chưa khớp.');
+        }
+
+        const payload = {
+          username: String(data.get('username') || '').trim(),
+          fullName: String(data.get('fullName') || '').trim(),
+          email: String(data.get('email') || '').trim(),
+          phone: String(data.get('phone') || '').trim(),
+          address: String(data.get('address') || '').trim(),
+          password
+        };
+
+        const result = await apiRequest('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        await bootstrapState(true);
+
+        if (result.user?.username) {
+          setCurrentUser(result.user.username);
+        }
+
+        showToast('Đăng ký thành công.', 'success');
+        window.location.href = '../customer/index.html';
+      } catch (error) {
+        setButtonBusy(submitBtn, false);
+        showToast(error.message || 'Đăng ký thất bại.', 'error');
+      }
+    });
+  }
 }
 
 function setText(selector, value) {
@@ -673,7 +1081,7 @@ function openPurchaseModal(service, user) {
     saveState(freshState);
     closeModal();
     showToast('Đã tạo đơn hàng mới.', 'success');
-    setTimeout(() => window.location.reload(), 300);
+    refreshCurrentView();
   });
 }
 
@@ -774,6 +1182,9 @@ function renderWalletPage() {
           <div><span>Ngân hàng</span><strong>${escapeHtml(state.payment.bankName)}</strong></div>
           <div><span>Chủ tài khoản</span><strong>${escapeHtml(state.payment.accountName)}</strong></div>
           <div><span>Số tài khoản</span><strong>${escapeHtml(state.payment.accountNumber)}</strong></div>
+          <div><span>Email hỗ trợ</span><strong>${escapeHtml(state.company.supportEmail || 'Chưa cập nhật')}</strong></div>
+          <div><span>Số điện thoại</span><strong>${escapeHtml(state.company.supportPhone || 'Chưa cập nhật')}</strong></div>
+          <div><span>Địa chỉ</span><strong>${escapeHtml(state.company.address || 'Chưa cập nhật')}</strong></div>
         </div>
         <div class="notice">${escapeHtml(state.payment.note)}</div>
       </div>
@@ -818,7 +1229,7 @@ function renderWalletPage() {
         });
         saveState(freshState);
         showToast('Đã tạo yêu cầu nạp tiền, chờ admin duyệt.', 'success');
-        setTimeout(() => window.location.reload(), 300);
+        refreshCurrentView();
       }, { once: true });
     });
   }
@@ -961,7 +1372,7 @@ function renderProfilePage() {
       customer.avatar = nextAvatar;
       saveState(state);
       showToast('Đã lưu hồ sơ khách hàng.', 'success');
-      setTimeout(() => window.location.reload(), 300);
+      refreshCurrentView();
     });
   }
 }
@@ -1082,43 +1493,187 @@ function openCustomerDetailModal(customerId) {
 
 function renderAdminServices(state) {
   const servicesRoot = document.querySelector('[data-admin-services]');
+  const form = document.getElementById('admin-service-form');
+  const previewRoot = document.querySelector('[data-admin-service-preview]');
+  const nameField = form?.querySelector('[name="name"]');
+  const categoryField = form?.querySelector('[name="category"]');
+  const priceField = form?.querySelector('[name="price"]');
+  const unitField = form?.querySelector('[name="unit"]');
+  const tagsField = form?.querySelector('[name="tags"]');
+  const featuredField = form?.querySelector('[name="featured"]');
+  const descriptionField = form?.querySelector('[name="description"]');
+  let nextImage = form?.dataset.image || '';
+
+  const drawPreview = service => {
+    if (!previewRoot) return;
+    previewRoot.innerHTML = `
+      <span class="mini-label">Xem trước</span>
+      <h3>${escapeHtml(service.name || 'Dịch vụ mới')}</h3>
+      <div class="service-preview-card">
+        <div class="service-thumb ${service.image ? '' : 'empty'}">${service.image ? `<img src="${service.image}" alt="service">` : '<span>Chưa có ảnh</span>'}</div>
+        <div class="service-preview-copy">
+          <div class="service-tags">${(service.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+          <p>${escapeHtml(service.description || 'Điền mô tả chi tiết để khách hàng hiểu rõ trước khi mua.')}</p>
+          <div class="detail-row"><span>${escapeHtml(service.category || 'Danh mục')}</span><strong>${formatCurrency(service.price || 0)} / ${escapeHtml(service.unit || 'gói')}</strong></div>
+        </div>
+      </div>
+    `;
+  };
+
   if (servicesRoot) {
     servicesRoot.innerHTML = state.services.map(service => `
       <tr>
-        <td><strong>${escapeHtml(service.name)}</strong><div class="cell-muted">${escapeHtml(service.description)}</div></td>
+        <td>
+          <div class="service-admin-row">
+            <div class="service-thumb sm ${service.image ? '' : 'empty'}">${service.image ? `<img src="${service.image}" alt="service">` : '<span>IMG</span>'}</div>
+            <div><strong>${escapeHtml(service.name)}</strong><div class="cell-muted">${escapeHtml(service.description)}</div></div>
+          </div>
+        </td>
         <td>${escapeHtml(service.category)}</td>
         <td>${formatCurrency(service.price)}</td>
         <td>${escapeHtml(service.unit)}</td>
         <td>${statusBadge(service.status)}</td>
         <td>${service.featured ? '<span class="badge success">Yes</span>' : '<span class="muted">No</span>'}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn secondary small" type="button" data-edit-service="${service.id}">Sửa</button>
+            <button class="btn ghost small" type="button" data-delete-service="${service.id}">Xóa</button>
+          </div>
+        </td>
       </tr>
     `).join('');
   }
 
-  const form = document.getElementById('admin-service-form');
+  const imageInput = form?.querySelector('[data-service-image-upload]');
+  const idField = form?.querySelector('input[name="id"]');
+  const resetEditor = () => {
+    if (!form) return;
+    form.reset();
+    if (idField) idField.value = '';
+    nextImage = '';
+    form.dataset.image = '';
+    const submitBtn = form.querySelector('[data-service-submit]');
+    if (submitBtn) submitBtn.textContent = 'Lưu dịch vụ mới';
+    drawPreview({ name: '', image: '', description: '', tags: [], price: 0, category: '', unit: '' });
+  };
+
+  if (form) {
+    if (form.name) form.name.value = form.name.value || '';
+    drawPreview({
+      name: nameField?.value || '',
+      image: nextImage,
+      description: descriptionField?.value || '',
+      tags: String(tagsField?.value || '').split(',').map(item => item.trim()).filter(Boolean),
+      price: Number(priceField?.value || 0),
+      category: categoryField?.value || '',
+      unit: unitField?.value || ''
+    });
+  }
+
+  if (imageInput && !imageInput.dataset.bound) {
+    imageInput.dataset.bound = 'true';
+    imageInput.addEventListener('change', event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        nextImage = String(reader.result || '');
+        form.dataset.image = nextImage;
+        drawPreview({
+          name: nameField?.value || '',
+          image: nextImage,
+          description: descriptionField?.value || '',
+          tags: String(tagsField?.value || '').split(',').map(item => item.trim()).filter(Boolean),
+          price: Number(priceField?.value || 0),
+          category: categoryField?.value || '',
+          unit: unitField?.value || ''
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  form?.querySelectorAll('input, textarea, select').forEach(input => {
+    if (input.dataset.previewBound) return;
+    input.dataset.previewBound = 'true';
+    input.addEventListener('input', () => drawPreview({
+      name: nameField?.value || '',
+      image: nextImage,
+      description: descriptionField?.value || '',
+      tags: String(tagsField?.value || '').split(',').map(item => item.trim()).filter(Boolean),
+      price: Number(priceField?.value || 0),
+      category: categoryField?.value || '',
+      unit: unitField?.value || ''
+    }));
+  });
+
   if (form && !form.dataset.bound) {
     form.dataset.bound = 'true';
     form.addEventListener('submit', event => {
       event.preventDefault();
       const data = new FormData(form);
+      const editingId = String(data.get('id') || '').trim();
       const freshState = getState();
-      freshState.services.unshift({
-        id: `sv${Date.now()}`,
+      const payload = {
+        id: editingId || `sv${Date.now()}`,
         name: String(data.get('name') || '').trim(),
         category: String(data.get('category') || '').trim(),
         price: Number(data.get('price') || 0),
         unit: String(data.get('unit') || '').trim(),
         description: String(data.get('description') || '').trim(),
+        image: nextImage || '',
         tags: String(data.get('tags') || '').split(',').map(item => item.trim()).filter(Boolean),
         featured: String(data.get('featured') || 'false') === 'true',
         status: 'active'
-      });
+      };
+      if (editingId) {
+        const existing = freshState.services.find(item => item.id === editingId);
+        if (existing) Object.assign(existing, payload, { image: payload.image || existing.image || '' });
+      } else {
+        freshState.services.unshift(payload);
+      }
       saveState(freshState);
-      showToast('Đã thêm dịch vụ mới.', 'success');
-      form.reset();
-      renderAdminPage();
+      showToast(editingId ? 'Đã cập nhật dịch vụ.' : 'Đã thêm dịch vụ mới.', 'success');
+      resetEditor();
+      rerenderPage();
     });
+    form.querySelector('[data-service-reset]')?.addEventListener('click', resetEditor);
   }
+
+  servicesRoot?.querySelectorAll('[data-edit-service]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const service = state.services.find(item => item.id === btn.dataset.editService);
+      if (!service || !form) return;
+      if (idField) idField.value = service.id;
+      if (nameField) nameField.value = service.name || '';
+      if (categoryField) categoryField.value = service.category || '';
+      if (priceField) priceField.value = service.price || 0;
+      if (unitField) unitField.value = service.unit || '';
+      if (tagsField) tagsField.value = (service.tags || []).join(', ');
+      if (featuredField) featuredField.value = String(!!service.featured);
+      if (descriptionField) descriptionField.value = service.description || '';
+      nextImage = service.image || '';
+      form.dataset.image = nextImage;
+      const submitBtn = form.querySelector('[data-service-submit]');
+      if (submitBtn) submitBtn.textContent = 'Cập nhật dịch vụ';
+      drawPreview(service);
+      window.scrollTo({ top: form.getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
+    });
+  });
+
+  servicesRoot?.querySelectorAll('[data-delete-service]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bạn chắc chắn muốn xóa dịch vụ này?')) return;
+      try {
+        await apiRequest('POST', `/api/services/${btn.dataset.deleteService}/delete`, {});
+        await bootstrapState(true);
+        showToast('Đã xóa dịch vụ.', 'success');
+        rerenderPage();
+      } catch (error) {
+        showToast(error.message || 'Không thể xóa dịch vụ.', 'error');
+      }
+    });
+  });
 }
 
 function renderAdminPayment(state) {
@@ -1155,6 +1710,14 @@ function renderAdminPayment(state) {
     form.dataset.bound = 'true';
     let nextQrImage = state.payment.qrImage || '';
     const qrUpload = document.querySelector('[data-admin-qr-upload]');
+    form.querySelector('[data-clear-qr]')?.addEventListener('click', () => {
+      nextQrImage = '';
+      const freshState = getState();
+      freshState.payment.qrImage = '';
+      saveState(freshState);
+      showToast('Đã xóa QR hiện tại.', 'info');
+      rerenderPage();
+    });
     qrUpload?.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -1181,7 +1744,7 @@ function renderAdminPayment(state) {
       if (nextQrImage) freshState.payment.qrImage = nextQrImage;
       saveState(freshState);
       showToast('Đã lưu thông tin thanh toán admin.', 'success');
-      renderAdminPage();
+      rerenderPage();
     });
   }
 }
@@ -1214,28 +1777,28 @@ function renderAdminDeposits(state) {
   }).join('');
 
   root.querySelectorAll('[data-approve-deposit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const freshState = getState();
-      const deposit = freshState.deposits.find(item => item.id === btn.dataset.approveDeposit);
-      if (!deposit || deposit.status !== 'pending') return;
-      deposit.status = 'approved';
-      const customer = freshState.users.find(item => item.id === deposit.customerId);
-      if (customer) customer.balance += Number(deposit.coin || 0);
-      saveState(freshState);
-      showToast('Đã duyệt lệnh nạp.', 'success');
-      renderAdminPage();
+    btn.addEventListener('click', async () => {
+      try {
+        await apiRequest('POST', `/api/deposits/${btn.dataset.approveDeposit}/approve`, {});
+        await bootstrapState(true);
+        showToast('Đã duyệt lệnh nạp.', 'success');
+        rerenderPage();
+      } catch (error) {
+        showToast(error.message || 'Không duyệt được lệnh nạp.', 'error');
+      }
     });
   });
 
   root.querySelectorAll('[data-reject-deposit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const freshState = getState();
-      const deposit = freshState.deposits.find(item => item.id === btn.dataset.rejectDeposit);
-      if (!deposit || deposit.status !== 'pending') return;
-      deposit.status = 'rejected';
-      saveState(freshState);
-      showToast('Đã từ chối lệnh nạp.', 'info');
-      renderAdminPage();
+    btn.addEventListener('click', async () => {
+      try {
+        await apiRequest('POST', `/api/deposits/${btn.dataset.rejectDeposit}/reject`, {});
+        await bootstrapState(true);
+        showToast('Đã từ chối lệnh nạp.', 'info');
+        rerenderPage();
+      } catch (error) {
+        showToast(error.message || 'Không từ chối được lệnh nạp.', 'error');
+      }
     });
   });
 }
@@ -1472,19 +2035,50 @@ function renderAdminChat(state) {
   drawAll();
 }
 
-function renderAdminPage() {
+function renderAdminShell(currentKey) {
   const admin = ensureAccess('admin');
-  if (!admin) return;
-  const state = getState();
-  const customers = state.users.filter(user => user.role === 'customer');
-  const pendingDeposits = state.deposits.filter(item => item.status === 'pending').length;
-  const unreadThreads = state.chats.filter(thread => thread.messages[thread.messages.length - 1]?.sender === 'customer').length;
+  if (!admin) return null;
 
   setText('[data-admin-name]', admin.fullName);
   setText('[data-admin-username]', `@${admin.username}`);
   setText('[data-admin-email]', admin.email);
   setText('[data-admin-avatar]', initials(admin.fullName));
   document.querySelectorAll('[data-admin-logout]').forEach(btn => btn.addEventListener('click', logout));
+
+  const permissionByKey = {
+    'admin-overview': 'admin',
+    'admin-services': 'services',
+    'admin-customers': 'customers',
+    'admin-payment': 'payment',
+    'admin-chat': 'chat',
+    'admin-settings': 'settings'
+  };
+  const allowedNav = ADMIN_NAV.filter(item => APP_PERMISSIONS.includes(permissionByKey[item.key]) || admin.role === 'admin');
+
+  const navRoot = document.querySelector('[data-admin-nav]');
+  if (navRoot) {
+    navRoot.innerHTML = `
+      <a class="side-link" href="${routeTo('index.html')}">← Trang chủ website</a>
+      ${allowedNav.map(item => `<a class="side-link ${item.key === currentKey ? 'active' : ''}" href="${item.href}">${item.icon} ${item.label}</a>`).join('')}
+    `;
+  }
+
+  const mobileRoot = document.querySelector('[data-admin-mobile-nav]');
+  if (mobileRoot) {
+    const links = [...allowedNav, { href: routeTo('index.html'), key: 'site-home', label: 'Trang chủ', icon: '🌐' }];
+    mobileRoot.innerHTML = links.map(item => `<a class="${item.key === currentKey ? 'active' : ''}" href="${item.href}"><span class="icon">${item.icon}</span><span>${item.label}</span></a>`).join('');
+  }
+
+  return admin;
+}
+
+function renderAdminOverviewPage() {
+  const admin = renderAdminShell('admin-overview');
+  if (!admin) return;
+  const state = getState();
+  const customers = state.users.filter(user => user.role === 'customer');
+  const pendingDeposits = state.deposits.filter(item => item.status === 'pending').length;
+  const unreadThreads = state.chats.filter(thread => thread.messages[thread.messages.length - 1]?.sender === 'customer').length;
 
   const kpiRoot = document.querySelector('[data-admin-kpis]');
   if (kpiRoot) {
@@ -1496,19 +2090,196 @@ function renderAdminPage() {
     `;
   }
 
-  renderAdminServices(state);
-  renderAdminCustomers(state);
-  renderAdminDeposits(state);
-  renderAdminPayment(state);
-  renderAdminChat(state);
+  const quickRoot = document.querySelector('[data-admin-quick-links]');
+  if (quickRoot) {
+    quickRoot.innerHTML = `
+      <a class="quick-link-card" href="services.html"><span class="mini-label">Dịch vụ</span><h3>Thêm dịch vụ trên trang riêng</h3><p class="muted">Form lớn hơn, có khu lưu API/key và bảng riêng nên không phải cuộn quá dài.</p></a>
+      <a class="quick-link-card" href="customers.html"><span class="mini-label">Khách hàng</span><h3>Quản lý hồ sơ và thu chi</h3><p class="muted">Bảng khách hàng, popup chi tiết và lệnh nạp đặt cùng một trang chuyên trách.</p></a>
+      <a class="quick-link-card" href="payment.html"><span class="mini-label">Thanh toán</span><h3>QR + thông tin nhận tiền</h3><p class="muted">Cập nhật QR, ngân hàng, email, điện thoại và giữ lại sau khi tải lại trang.</p></a>
+      <a class="quick-link-card" href="chat.html"><span class="mini-label">Live chat</span><h3>Khung chat riêng</h3><p class="muted">Nhắn khách hàng nhanh hơn mà không bị lẫn với những khối quản trị khác.</p></a>
+      ${(APP_PERMISSIONS.includes('reports') || admin.role === 'admin') ? `<div class="quick-link-card report-card"><span class="mini-label">Báo cáo</span><h3>Xuất Excel / PDF</h3><p class="muted">Lấy báo cáo tổng hợp khách hàng, đơn hàng và lệnh nạp chỉ với một nút bấm.</p><div class="admin-report-links"><a class="btn secondary small" href="/api/reports/export.xlsx">Xuất Excel</a><a class="btn ghost small" href="/api/reports/export.pdf">Xuất PDF</a></div></div>` : ''}
+    `;
+  }
+
+  const urgentRoot = document.querySelector('[data-admin-urgent]');
+  if (urgentRoot) {
+    const urgentDeposits = state.deposits.filter(item => item.status === 'pending').slice(0, 5);
+    urgentRoot.innerHTML = urgentDeposits.length ? urgentDeposits.map(item => {
+      const customer = state.users.find(user => user.id === item.customerId);
+      return `<div class="list-card"><div class="customer-card-head"><strong>${escapeHtml(customer?.fullName || 'Khách hàng')}</strong>${statusBadge(item.status)}</div><div class="detail-row"><span>${escapeHtml(item.id)}</span><strong>${formatMoney(item.amount)}</strong></div><div class="muted">${escapeHtml(item.note)}</div></div>`;
+    }).join('') : '<div class="empty-state">Hiện không có lệnh nạp nào chờ duyệt.</div>';
+  }
 }
 
-function init() {
+function renderAdminServicesPage() {
+  const admin = renderAdminShell('admin-services');
+  if (!admin) return;
+  const state = getState();
+  renderAdminServices(state);
+  renderAdminServiceIntegration(state);
+}
+
+function renderAdminCustomersPage() {
+  const admin = renderAdminShell('admin-customers');
+  if (!admin) return;
+  const state = getState();
+  renderAdminCustomers(state);
+  renderAdminDeposits(state);
+}
+
+function renderAdminPaymentPage() {
+  const admin = renderAdminShell('admin-payment');
+  if (!admin) return;
+  const state = getState();
+  renderAdminPayment(state);
+  renderAdminCompanySettings(state);
+}
+
+function renderAdminChatPage() {
+  const admin = renderAdminShell('admin-chat');
+  if (!admin) return;
+  renderAdminChat(getState());
+}
+
+function renderAdminSettingsPage() {
+  const admin = renderAdminShell('admin-settings');
+  if (!admin) return;
+  const state = getState();
+  renderAdminCompanySettings(state);
+  renderAdminServiceIntegration(state);
+}
+
+function renderAdminCurrentPage() {
+  const page = getPage();
+  if (page === 'admin' || page === 'admin-overview') return renderAdminOverviewPage();
+  if (page === 'admin-services') return renderAdminServicesPage();
+  if (page === 'admin-customers') return renderAdminCustomersPage();
+  if (page === 'admin-payment') return renderAdminPaymentPage();
+  if (page === 'admin-chat') return renderAdminChatPage();
+  if (page === 'admin-settings') return renderAdminSettingsPage();
+}
+
+function renderAdminServiceIntegration(state) {
+  const form = document.getElementById('admin-integration-form');
+  const previewRoot = document.querySelector('[data-admin-integration-preview]');
+  if (previewRoot) {
+    previewRoot.innerHTML = `
+      <span class="mini-label">Kết nối ngoài</span>
+      <h3>Gắn endpoint và key một lần</h3>
+      <div class="feature-list">
+        <article><strong>Endpoint</strong><div class="muted line-clamp-2">${escapeHtml(state.integration.endpoint || 'Chưa cấu hình endpoint')}</div></article>
+        <article><strong>Auth</strong><div class="muted">${escapeHtml(state.integration.authType || 'bearer')} ${state.integration.enabled ? '• Đã bật' : '• Chưa bật'}</div></article>
+        <article><strong>Mapping</strong><div class="muted">Tên: ${escapeHtml(state.integration.nameField)} • Giá: ${escapeHtml(state.integration.priceField)} • Danh mục: ${escapeHtml(state.integration.categoryField)}</div></article>
+      </div>
+      <div class="notice">Nếu API ngoài trả JSON và cho phép CORS, bạn có thể bấm đồng bộ để lấy dịch vụ vào web hiện tại. Nếu bên ngoài chặn trình duyệt, sau này chỉ cần đặt thêm backend/proxy là dùng được tiếp.</div>
+    `;
+  }
+  if (!form) return;
+  const config = state.integration || {};
+  const fields = ['endpoint','apiKey','servicePath','nameField','categoryField','priceField','unitField','descriptionField','tagsField','featuredField','statusField','syncEveryMinutes','webhookSecret'];
+  fields.forEach(key => { if (form[key]) form[key].value = config[key] || ''; });
+  if (form.authType) form.authType.value = config.authType || 'bearer';
+  if (form.enabled) form.enabled.checked = !!config.enabled;
+  if (!form.dataset.bound) {
+    form.dataset.bound = 'true';
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const freshState = getState();
+      freshState.integration = {
+        enabled: !!form.enabled.checked,
+        endpoint: String(form.endpoint.value || '').trim(),
+        apiKey: String(form.apiKey.value || '').trim(),
+        authType: String(form.authType.value || 'bearer').trim(),
+        servicePath: String(form.servicePath.value || '').trim(),
+        nameField: String(form.nameField.value || 'name').trim(),
+        categoryField: String(form.categoryField.value || 'category').trim(),
+        priceField: String(form.priceField.value || 'price').trim(),
+        unitField: String(form.unitField.value || 'unit').trim(),
+        descriptionField: String(form.descriptionField.value || 'description').trim(),
+        tagsField: String(form.tagsField.value || 'tags').trim(),
+        featuredField: String(form.featuredField.value || 'featured').trim(),
+        statusField: String(form.statusField.value || 'status').trim(),
+        syncEveryMinutes: Number(form.syncEveryMinutes?.value || 60),
+        webhookSecret: String(form.webhookSecret?.value || '').trim()
+      };
+      saveState(freshState);
+      showToast('Đã lưu cấu hình kết nối dịch vụ.', 'success');
+      rerenderPage();
+    });
+    const syncBtn = form.querySelector('[data-sync-services]');
+    syncBtn?.addEventListener('click', async () => {
+      const freshState = getState();
+      const cfg = freshState.integration || {};
+      if (!cfg.endpoint) return showToast('Hãy nhập endpoint API trước.', 'error');
+      try {
+        const headers = { Accept: 'application/json' };
+        if (cfg.apiKey) {
+          if (cfg.authType === 'x-api-key') headers['x-api-key'] = cfg.apiKey;
+          else headers.Authorization = `Bearer ${cfg.apiKey}`;
+        }
+        const result = await apiRequest('POST', '/api/integrations/sync', {});
+        await bootstrapState(true);
+        showToast(`Đã đồng bộ ${result.changed || 0} dịch vụ từ API.`, 'success');
+        rerenderPage();
+      } catch (error) {
+        showToast(`Đồng bộ thất bại: ${error.message}.`, 'error');
+      }
+    });
+  }
+}
+
+function renderAdminCompanySettings(state) {
+  const form = document.getElementById('admin-company-form');
+  const previewRoot = document.querySelector('[data-admin-company-preview]');
+  if (previewRoot) {
+    previewRoot.innerHTML = `
+      <span class="mini-label">Thông tin doanh nghiệp</span>
+      <h3>${escapeHtml(state.company.name)}</h3>
+      <div class="info-pairs">
+        <div><span>Slogan</span><strong>${escapeHtml(state.company.slogan)}</strong></div>
+        <div><span>Email hỗ trợ</span><strong>${escapeHtml(state.company.supportEmail)}</strong></div>
+        <div><span>Điện thoại</span><strong>${escapeHtml(state.company.supportPhone)}</strong></div>
+        <div><span>Địa chỉ</span><strong>${escapeHtml(state.company.address)}</strong></div>
+        <div><span>Người phụ trách</span><strong>${escapeHtml(state.company.adminName)} • ${escapeHtml(state.company.adminTitle)}</strong></div>
+      </div>
+      <div class="notice">Thông tin này được dùng lại cho footer, trang khách hàng, thương hiệu đầu trang và phần thanh toán.</div>
+    `;
+  }
+  if (!form) return;
+  const fields = ['name','slogan','about','adminName','adminTitle','supportEmail','supportPhone','address','trustText'];
+  const getField = key => form.querySelector(`[name="${key}"]`);
+  fields.forEach(key => { const input = getField(key); if (input) input.value = state.company[key] || ''; });
+  if (!form.dataset.bound) {
+    form.dataset.bound = 'true';
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const freshState = getState();
+      fields.forEach(key => { const input = getField(key); freshState.company[key] = String(input?.value || '').trim(); });
+      const adminUser = freshState.users.find(user => user.role === 'admin');
+      if (adminUser) {
+        adminUser.fullName = freshState.company.adminName || adminUser.fullName;
+        adminUser.email = freshState.company.supportEmail || adminUser.email;
+        adminUser.phone = freshState.company.supportPhone || adminUser.phone;
+        adminUser.address = freshState.company.address || adminUser.address;
+      }
+      saveState(freshState);
+      renderBrand();
+      renderFooter();
+      showToast('Đã lưu thông tin doanh nghiệp.', 'success');
+      rerenderPage();
+    });
+  }
+}
+
+async function init() {
+  await bootstrapState();
+
   renderBrand();
   renderFooter();
-  const page = getPage();
-  if (page === 'entry') renderEntryPage();
-  if (page === 'auth') renderAuthPage();
+
+  const page = document.body.dataset.page || 'home';
+  if (page === 'home') renderHome();
+  if (page === 'auth') renderAuth();
   if (page === 'customer-overview') renderCustomerOverview();
   if (page === 'customer-services') renderServicesPage();
   if (page === 'customer-wallet') renderWalletPage();
@@ -1516,6 +2287,19 @@ function init() {
   if (page === 'customer-profile') renderProfilePage();
   if (page === 'customer-support') renderSupportPage();
   if (page === 'admin') renderAdminPage();
+
+  if (typeof setupMobileEnterpriseUI === 'function') {
+    setupMobileEnterpriseUI();
+  }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+});
+
+window.forceResetPthConfig = function () {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(`${STORAGE_KEY}_config_version`);
+  localStorage.removeItem(CURRENT_USER_KEY);
+  window.location.reload();
+};

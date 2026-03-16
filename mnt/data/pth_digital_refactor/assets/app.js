@@ -216,8 +216,6 @@ const ADMIN_NAV = [
   { href: 'settings.html', key: 'admin-settings', label: 'Doanh nghiệp', icon: '⚙️' }
 ];
 
-let APP_STATE = null;
-let APP_USER = null;
 let APP_PERMISSIONS = [];
 
 function getPage() {
@@ -240,123 +238,137 @@ function cloneDefaultState() {
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
 
-function syncCompanyAndPaymentFromCode(state) {
-  const base = cloneDefaultState();
-  return {
-    ...state,
-    company: { ...base.company },
-    payment: { ...base.payment }
-  };
+let APP_STATE = null;
+let APP_USER = null;
+let BOOTSTRAP_PROMISE = null;
+
+function authPath() {
+  return (document.body.dataset.page || '') === 'home' ? 'auth/index.html' : '../auth/index.html';
 }
 
-function deepMerge(defaultValue, currentValue) {
-  if (Array.isArray(defaultValue)) return Array.isArray(currentValue) ? currentValue : defaultValue;
-  if (defaultValue && typeof defaultValue === 'object') {
-    const result = { ...defaultValue };
-    const source = currentValue && typeof currentValue === 'object' ? currentValue : {};
-    Object.keys(source).forEach(key => {
-      result[key] = key in defaultValue ? deepMerge(defaultValue[key], source[key]) : source[key];
-    });
-    return result;
-  }
-  return currentValue === undefined || currentValue === null ? defaultValue : currentValue;
-}
-
-function apiRequestSync(method, url, body) {
-  const xhr = new XMLHttpRequest();
-  xhr.open(method, url, false);
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.send(body ? JSON.stringify(body) : null);
-  let data = null;
-  try { data = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch (error) { data = null; }
-  if (xhr.status === 401 && !['entry', 'auth'].includes(getPage())) {
-    window.location.href = routeTo('auth/index.html');
-    return null;
-  }
-  if (xhr.status >= 400) throw new Error(data?.message || 'Yêu cầu thất bại.');
-  return data;
-}
-
-async function apiRequest(method, url, body) {
+async function apiRequest(url, options = {}) {
   const response = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'same-origin'
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    },
+    ...options
   });
-  let data = null;
-  try { data = await response.json(); } catch (error) { data = null; }
-  if (!response.ok) throw new Error(data?.message || 'Yêu cầu thất bại.');
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Yêu cầu thất bại.');
+  }
   return data;
 }
 
-function loadBootstrap(force = false) {
-  if (!force && APP_STATE) return { state: APP_STATE, currentUser: APP_USER, permissions: APP_PERMISSIONS };
-  try {
-    const payload = apiRequestSync('GET', '/api/bootstrap');
-    APP_STATE = deepMerge(cloneDefaultState(), payload?.state || {});
-    APP_USER = payload?.currentUser || null;
-    APP_PERMISSIONS = payload?.permissions || [];
-  } catch (error) {
-    APP_STATE = cloneDefaultState();
-    APP_USER = null;
-    APP_PERMISSIONS = [];
-  }
-  return { state: APP_STATE, currentUser: APP_USER, permissions: APP_PERMISSIONS };
+async function bootstrapState(force = false) {
+  if (BOOTSTRAP_PROMISE && !force) return BOOTSTRAP_PROMISE;
+
+  BOOTSTRAP_PROMISE = apiRequest('/api/bootstrap')
+    .then(payload => {
+      APP_STATE = payload.state || cloneDefaultState();
+      APP_USER = payload.currentUser || null;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
+      if (APP_USER?.username) {
+        localStorage.setItem(CURRENT_USER_KEY, APP_USER.username);
+      } else {
+        localStorage.removeItem(CURRENT_USER_KEY);
+      }
+      return payload;
+    })
+    .catch(() => {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      APP_STATE = raw ? JSON.parse(raw) : cloneDefaultState();
+
+      const username = localStorage.getItem(CURRENT_USER_KEY);
+      APP_USER = username
+        ? APP_STATE.users.find(user => user.username === username) || null
+        : null;
+
+      return { state: APP_STATE, currentUser: APP_USER };
+    })
+    .finally(() => {
+      BOOTSTRAP_PROMISE = null;
+    });
+
+  return BOOTSTRAP_PROMISE;
 }
 
 function getState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  if (APP_STATE) return APP_STATE;
 
+  const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    const seeded = cloneDefaultState();
-    saveState(seeded);
-    localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
-    return seeded;
+    APP_STATE = cloneDefaultState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
+    return APP_STATE;
   }
 
   try {
-    const parsed = JSON.parse(raw);
-    let normalized = normalizeState(parsed);
-
-    const savedConfigVersion = localStorage.getItem(`${STORAGE_KEY}_config_version`);
-    if (savedConfigVersion !== CONFIG_SYNC_VERSION) {
-      normalized = syncCompanyAndPaymentFromCode(normalized);
-      saveState(normalized);
-      localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
-    } else if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
-      saveState(normalized);
-    }
-
-    return normalized;
+    APP_STATE = JSON.parse(raw);
+    return APP_STATE;
   } catch (error) {
-    const seeded = cloneDefaultState();
-    saveState(seeded);
-    localStorage.setItem(`${STORAGE_KEY}_config_version`, CONFIG_SYNC_VERSION);
-    return seeded;
+    APP_STATE = cloneDefaultState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
+    return APP_STATE;
   }
 }
 
 function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  APP_STATE = JSON.parse(JSON.stringify(state));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
+
+  if (!APP_USER) return Promise.resolve(APP_STATE);
+
+  return apiRequest('/api/state', {
+    method: 'POST',
+    body: JSON.stringify({ state: APP_STATE })
+  })
+    .then(payload => {
+      APP_STATE = payload.state || APP_STATE;
+      APP_USER = payload.currentUser || APP_USER;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
+      if (APP_USER?.username) {
+        localStorage.setItem(CURRENT_USER_KEY, APP_USER.username);
+      }
+      return APP_STATE;
+    })
+    .catch(error => {
+      console.error('Lỗi đồng bộ state:', error);
+      return APP_STATE;
+    });
 }
 
 function getCurrentUser() {
-  return loadBootstrap().currentUser;
+  if (APP_USER) return APP_USER;
+
+  const username = localStorage.getItem(CURRENT_USER_KEY);
+  if (!username) return null;
+
+  const state = getState();
+  APP_USER = state.users.find(user => user.username === username) || null;
+  return APP_USER;
 }
 
-function setCurrentUser(user) {
-  APP_USER = user || null;
+function setCurrentUser(username) {
+  const state = getState();
+  APP_USER = state.users.find(user => user.username === username) || null;
+  if (APP_USER?.username) {
+    localStorage.setItem(CURRENT_USER_KEY, APP_USER.username);
+  }
 }
 
 function logout() {
-  try {
-    apiRequestSync('POST', '/api/auth/logout', {});
-  } catch (error) {
-  }
+  localStorage.removeItem(CURRENT_USER_KEY);
   APP_USER = null;
-  APP_STATE = null;
-  window.location.href = routeTo('auth/index.html');
+  fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(() => {});
+  window.location.href = authPath();
 }
 
 function nowString() {
@@ -427,6 +439,31 @@ function showToast(message, type = 'info') {
   toast.textContent = message;
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), 2600);
+}
+
+function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
+  if (!button) return;
+
+  if (busy) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-busy');
+    button.innerHTML = busyText;
+    return;
+  }
+
+  button.disabled = false;
+  button.classList.remove('is-busy');
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function refreshCurrentView() {
+  window.location.reload();
 }
 
 let mobileUiBound = false;
@@ -717,10 +754,10 @@ function bindAuthForms() {
           identifier: String(data.get('identifier') || '').trim(),
           password: String(data.get('password') || '')
         });
-        setCurrentUser(payload.user);
-        loadBootstrap(true);
+        setCurrentUser(payload.user.username);
+        await bootstrapState(true);
         showToast('Đăng nhập thành công.', 'success');
-        redirectForRole(payload.user);
+        window.location.href = payload.user.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
       } catch (error) {
         showToast(error.message || 'Sai thông tin đăng nhập.', 'error');
       }
@@ -747,10 +784,10 @@ function bindAuthForms() {
           address: String(data.get('address') || '').trim(),
           password
         });
-        setCurrentUser(payload.user);
-        loadBootstrap(true);
+        setCurrentUser(payload.user.username);
+        await bootstrapState(true);
         showToast('Đăng ký thành công.', 'success');
-        redirectForRole(payload.user);
+        window.location.href = '../customer/index.html';
       } catch (error) {
         showToast(error.message || 'Đăng ký thất bại.', 'error');
       }
@@ -763,8 +800,99 @@ function renderEntryPage() {
   bindAuthForms();
 }
 
-function renderAuthPage() {
-  bindAuthForms();
+function renderAuth() {
+  const currentUser = getCurrentUser();
+  if (currentUser) {
+    window.location.href = currentUser.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
+    return;
+  }
+
+  const buttons = document.querySelectorAll('[data-auth-tab-btn]');
+  const panes = document.querySelectorAll('[data-auth-tab]');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.authTabBtn;
+      buttons.forEach(button => button.classList.toggle('active', button === btn));
+      panes.forEach(pane => pane.classList.toggle('hidden', pane.dataset.authTab !== key));
+    });
+  });
+
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      setButtonBusy(submitBtn, true, 'Đang đăng nhập...');
+
+      try {
+        const formData = new FormData(loginForm);
+        const identifier = String(formData.get('identifier') || '').trim();
+        const password = String(formData.get('password') || '');
+
+        const result = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ identifier, password })
+        });
+
+        await bootstrapState(true);
+
+        if (result.user?.username) {
+          setCurrentUser(result.user.username);
+        }
+
+        showToast('Đăng nhập thành công.', 'success');
+        window.location.href = result.user?.role === 'admin' ? '../admin/index.html' : '../customer/index.html';
+      } catch (error) {
+        setButtonBusy(submitBtn, false);
+        showToast(error.message || 'Sai thông tin đăng nhập.', 'error');
+      }
+    });
+  }
+
+  const registerForm = document.getElementById('register-form');
+  if (registerForm) {
+    registerForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
+      setButtonBusy(submitBtn, true, 'Đang tạo tài khoản...');
+
+      try {
+        const data = new FormData(registerForm);
+        const password = String(data.get('password') || '');
+        const confirmPassword = String(data.get('confirmPassword') || '');
+
+        if (password !== confirmPassword) {
+          throw new Error('Mật khẩu nhập lại chưa khớp.');
+        }
+
+        const payload = {
+          username: String(data.get('username') || '').trim(),
+          fullName: String(data.get('fullName') || '').trim(),
+          email: String(data.get('email') || '').trim(),
+          phone: String(data.get('phone') || '').trim(),
+          address: String(data.get('address') || '').trim(),
+          password
+        };
+
+        const result = await apiRequest('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        await bootstrapState(true);
+
+        if (result.user?.username) {
+          setCurrentUser(result.user.username);
+        }
+
+        showToast('Đăng ký thành công.', 'success');
+        window.location.href = '../customer/index.html';
+      } catch (error) {
+        setButtonBusy(submitBtn, false);
+        showToast(error.message || 'Đăng ký thất bại.', 'error');
+      }
+    });
+  }
 }
 
 function setText(selector, value) {
@@ -1532,7 +1660,7 @@ function renderAdminServices(state) {
       if (!confirm('Bạn chắc chắn muốn xóa dịch vụ này?')) return;
       try {
         await apiRequest('POST', `/api/services/${btn.dataset.deleteService}/delete`, {});
-        loadBootstrap(true);
+        await bootstrapState(true);
         showToast('Đã xóa dịch vụ.', 'success');
         rerenderPage();
       } catch (error) {
@@ -1646,7 +1774,7 @@ function renderAdminDeposits(state) {
     btn.addEventListener('click', async () => {
       try {
         await apiRequest('POST', `/api/deposits/${btn.dataset.approveDeposit}/approve`, {});
-        loadBootstrap(true);
+        await bootstrapState(true);
         showToast('Đã duyệt lệnh nạp.', 'success');
         rerenderPage();
       } catch (error) {
@@ -1659,7 +1787,7 @@ function renderAdminDeposits(state) {
     btn.addEventListener('click', async () => {
       try {
         await apiRequest('POST', `/api/deposits/${btn.dataset.rejectDeposit}/reject`, {});
-        loadBootstrap(true);
+        await bootstrapState(true);
         showToast('Đã từ chối lệnh nạp.', 'info');
         rerenderPage();
       } catch (error) {
@@ -2084,7 +2212,7 @@ function renderAdminServiceIntegration(state) {
           else headers.Authorization = `Bearer ${cfg.apiKey}`;
         }
         const result = await apiRequest('POST', '/api/integrations/sync', {});
-        loadBootstrap(true);
+        await bootstrapState(true);
         showToast(`Đã đồng bộ ${result.changed || 0} dịch vụ từ API.`, 'success');
         rerenderPage();
       } catch (error) {
@@ -2137,7 +2265,9 @@ function renderAdminCompanySettings(state) {
   }
 }
 
-function init() {
+async function init() {
+  await bootstrapState();
+
   renderBrand();
   renderFooter();
 
@@ -2152,8 +2282,14 @@ function init() {
   if (page === 'customer-support') renderSupportPage();
   if (page === 'admin') renderAdminPage();
 
-  setupMobileEnterpriseUI();
+  if (typeof setupMobileEnterpriseUI === 'function') {
+    setupMobileEnterpriseUI();
+  }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+});
 
 window.forceResetPthConfig = function () {
   localStorage.removeItem(STORAGE_KEY);
@@ -2161,5 +2297,3 @@ window.forceResetPthConfig = function () {
   localStorage.removeItem(CURRENT_USER_KEY);
   window.location.reload();
 };
-
-document.addEventListener('DOMContentLoaded', init);
