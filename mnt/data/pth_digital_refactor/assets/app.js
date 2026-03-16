@@ -2281,7 +2281,7 @@ async function init() {
   if (page === 'customer-history') renderHistoryPage();
   if (page === 'customer-profile') renderProfilePage();
   if (page === 'customer-support') renderSupportPage();
-  if (page.startsWith('admin')) renderAdminPage();
+  if (page.startsWith('admin')) renderAdminCurrentPage();
 
   if (typeof setupMobileEnterpriseUI === 'function') {
     setupMobileEnterpriseUI();
