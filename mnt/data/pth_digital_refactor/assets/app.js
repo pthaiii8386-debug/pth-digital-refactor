@@ -7,18 +7,19 @@ const DEFAULT_STATE = {
     name: 'PTH DIGITAL',
     slogan: 'Nền tảng dịch vụ số chuyên nghiệp cho doanh nghiệp',
     about: 'Website dịch vụ số có cổng đăng nhập rõ ràng, khu khách hàng tách trang, khu admin đầy đủ chức năng và giao diện tối ưu tốt trên desktop lẫn điện thoại.',
-    adminName: 'Hải Phạm',
+    adminName: 'THANH HẢI',
     adminTitle: 'Founder & Digital Operations Lead',
     supportEmail: 'support@pthdigital.vn',
+    supportTelegram: 'https://t.me/Mmo_white',
     supportPhone: '0901 234 567',
-    address: 'Hồ Chí Minh, Việt Nam',
+    address: 'Quảng Trị, Việt Nam',
     trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.'
   },
   payment: {
-    bankName: 'Vietcombank',
-    accountName: 'PTH DIGITAL',
-    accountNumber: '0123456789',
-    minDeposit: 50000,
+    bankName: 'MB BANK',
+    accountName: 'PHAM THANH HAI',
+    accountNumber: '9201283869999',
+    minDeposit: 20000,
     note: 'Chuyển khoản đúng nội dung để admin duyệt nhanh hơn. Số tiền thấp hơn mức khuyến nghị vẫn có thể tạo yêu cầu.',
     qrImage: ''
   },
@@ -43,10 +44,10 @@ const DEFAULT_STATE = {
       role: 'admin',
       username: 'admin',
       password: 'Admin@123',
-      fullName: 'Hải Phạm',
+      fullName: 'THANH HẢI',
       email: 'admin@pthdigital.vn',
       phone: '0901 234 567',
-      address: 'Hồ Chí Minh',
+      address: 'Quảng Trị, Việt Nam',
       balance: 0,
       bio: 'Tài khoản quản trị hệ thống.',
       avatar: ''
@@ -395,6 +396,37 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.classList.add('hidden'), 2600);
 }
 
+function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
+  if (!button) return;
+  if (busy) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-busy');
+    button.innerHTML = busyText;
+    return;
+  }
+  button.disabled = false;
+  button.classList.remove('is-busy');
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function refreshCurrentView() {
+  const page = document.body?.dataset?.page || '';
+  if (page.startsWith('admin')) {
+    if (typeof initAdminPage === 'function') initAdminPage();
+    return;
+  }
+  if (page.startsWith('customer')) {
+    if (typeof initCustomerPage === 'function') initCustomerPage();
+    return;
+  }
+  window.location.reload();
+}
+
 function renderBrand() {
   const state = getState();
   document.querySelectorAll('[data-brand]').forEach(el => {
@@ -535,7 +567,7 @@ function bindAuthForms() {
         setCurrentUser(payload.user);
         loadBootstrap(true);
         showToast('Đăng nhập thành công.', 'success');
-        setTimeout(() => redirectForRole(payload.user), 400);
+        redirectForRole(payload.user);
       } catch (error) {
         showToast(error.message || 'Sai thông tin đăng nhập.', 'error');
       }
@@ -565,7 +597,7 @@ function bindAuthForms() {
         setCurrentUser(payload.user);
         loadBootstrap(true);
         showToast('Đăng ký thành công.', 'success');
-        setTimeout(() => redirectForRole(payload.user), 400);
+        redirectForRole(payload.user);
       } catch (error) {
         showToast(error.message || 'Đăng ký thất bại.', 'error');
       }
@@ -762,7 +794,7 @@ function openPurchaseModal(service, user) {
     saveState(freshState);
     closeModal();
     showToast('Đã tạo đơn hàng mới.', 'success');
-    setTimeout(() => window.location.reload(), 300);
+    refreshCurrentView();
   });
 }
 
@@ -910,7 +942,7 @@ function renderWalletPage() {
         });
         saveState(freshState);
         showToast('Đã tạo yêu cầu nạp tiền, chờ admin duyệt.', 'success');
-        setTimeout(() => window.location.reload(), 300);
+        refreshCurrentView();
       }, { once: true });
     });
   }
@@ -1053,7 +1085,7 @@ function renderProfilePage() {
       customer.avatar = nextAvatar;
       saveState(state);
       showToast('Đã lưu hồ sơ khách hàng.', 'success');
-      setTimeout(() => window.location.reload(), 300);
+      refreshCurrentView();
     });
   }
 }
