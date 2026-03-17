@@ -7,14 +7,14 @@ const DEFAULT_STATE = {
   company: {
     name: 'PTH DIGITAL',
     slogan: 'Nền tảng dịch vụ số chuyên nghiệp cho doanh nghiệp',
-    about: 'Website dịch vụ số có cổng đăng nhập rõ ràng, khu khách hàng tách trang, khu admin đầy đủ chức năng và giao diện tối ưu tốt trên desktop lẫn điện thoại.',
+    about: 'PTH DIGITAL là nền tảng số hỗ trợ doanh nghiệp quản lý thông tin dịch vụ, thanh toán và thương hiệu một cách rõ ràng, chuyên nghiệp và hiệu quả. Website được xây dựng nhằm mang đến trải nghiệm thuận tiện cho khách hàng với giao diện dễ sử dụng, thông tin minh bạch và quy trình thao tác nhanh gọn. Chúng tôi luôn đặt uy tín, chất lượng và sự hài lòng của khách hàng làm trọng tâm để tạo nên giá trị bền vững và niềm tin lâu dài.',
     adminName: 'THANH HẢI',
     adminTitle: 'Founder & Digital Operations Lead',
     supportEmail: 'support@pthdigital.vn',
     supportTelegram: 'https://t.me/Mmo_white',
     supportPhone: '0901 234 567',
     address: 'Quảng Trị, Việt Nam',
-    trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.'
+    trustText: 'Khách hàng trao niềm tin, chúng tôi trao giá trị.\n\nUy tín làm nên thương hiệu, niềm tin làm nên thành công.\n\nMỗi sản phẩm là một cam kết, mỗi khách hàng là một niềm tin.'
   },
   payment: {
     bankName: 'MB BANK',
