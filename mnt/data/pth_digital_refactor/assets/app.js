@@ -214,21 +214,21 @@ const DEFAULT_STATE = {
 };
 
 const CUSTOMER_NAV = [
-  { href: 'index.html', label: 'Tổng quan', icon: '🏠' },
-  { href: 'services.html', label: 'Dịch vụ', icon: '🧩' },
-  { href: 'wallet.html', label: 'Ví coin', icon: '💳' },
-  { href: 'history.html', label: 'Lịch sử', icon: '📋' },
-  { href: 'profile.html', label: 'Hồ sơ', icon: '👤' },
-  { href: 'support.html', label: 'Live chat', icon: '💬' }
+  { href: 'index.html', label: 'Tổng quan', icon: 'LayoutDashboard' },
+  { href: 'services.html', label: 'Dịch vụ', icon: 'Briefcase' },
+  { href: 'wallet.html', label: 'Ví coin', icon: 'WalletCards' },
+  { href: 'history.html', label: 'Giao dịch', icon: 'ReceiptText' },
+  { href: 'profile.html', label: 'Tài khoản', icon: 'BadgeCheck' },
+  { href: 'support.html', label: 'Hỗ trợ', icon: 'Headset' }
 ];
 
 const ADMIN_NAV = [
-  { href: 'index.html', key: 'admin-overview', label: 'Tổng quan', icon: '📊' },
-  { href: 'services.html', key: 'admin-services', label: 'Dịch vụ', icon: '🧩' },
-  { href: 'customers.html', key: 'admin-customers', label: 'Khách hàng', icon: '👥' },
-  { href: 'payment.html', key: 'admin-payment', label: 'Thanh toán', icon: '💳' },
-  { href: 'chat.html', key: 'admin-chat', label: 'Live chat', icon: '💬' },
-  { href: 'settings.html', key: 'admin-settings', label: 'Doanh nghiệp', icon: '⚙️' }
+  { href: 'index.html', key: 'admin-overview', label: 'Tổng quan', icon: 'BarChart3' },
+  { href: 'services.html', key: 'admin-services', label: 'Dịch vụ', icon: 'Puzzle' },
+  { href: 'customers.html', key: 'admin-customers', label: 'Khách hàng', icon: 'Users' },
+  { href: 'payment.html', key: 'admin-payment', label: 'Thanh toán', icon: 'CreditCard' },
+  { href: 'chat.html', key: 'admin-chat', label: 'Live chat', icon: 'MessageSquare' },
+  { href: 'settings.html', key: 'admin-settings', label: 'Doanh nghiệp', icon: 'Settings' }
 ];
 
 let APP_PERMISSIONS = [];
@@ -405,6 +405,25 @@ function initials(name) {
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 }
+
+function getIconEmoji(iconName) {
+  const iconMap = {
+    'LayoutDashboard': '📊',
+    'Briefcase': '💼',
+    'WalletCards': '💳',
+    'ReceiptText': '📋',
+    'BadgeCheck': '✅',
+    'Headset': '🎧',
+    'BarChart3': '📈',
+    'Puzzle': '🧩',
+    'Users': '👥',
+    'CreditCard': '💳',
+    'MessageSquare': '💬',
+    'Settings': '⚙️'
+  };
+  return iconMap[iconName] || iconName;
+}
+
 
 function getNestedValue(obj, path) {
   return String(path || '').split('.').filter(Boolean).reduce((acc, key) => (acc && typeof acc === 'object') ? acc[key] : undefined, obj);
@@ -1040,14 +1059,14 @@ function renderCustomerShell(currentFile) {
   if (navRoot) {
     navRoot.innerHTML = `
       <a class="side-link" href="${routeTo('index.html')}">← Trang chủ website</a>
-      ${CUSTOMER_NAV.map(item => `<a class="side-link ${item.href === currentFile ? 'active' : ''}" href="${item.href}">${item.icon} ${item.label}</a>`).join('')}
+      ${CUSTOMER_NAV.map(item => `<a class="side-link ${item.href === currentFile ? 'active' : ''}" href="${item.href}">${getIconEmoji(item.icon)} ${item.label}</a>`).join('')}
     `;
   }
 
   const mobileRoot = document.querySelector('[data-mobile-nav]');
   if (mobileRoot) {
-    const links = [...CUSTOMER_NAV, { href: routeTo('index.html'), label: 'Trang chủ', icon: '🌐' }];
-    mobileRoot.innerHTML = links.map(item => `<a class="${item.href === currentFile ? 'active' : ''}" href="${item.href}"><span class="icon">${item.icon}</span><span>${item.label}</span></a>`).join('');
+    const links = [...CUSTOMER_NAV, { href: routeTo('index.html'), label: 'Trang chủ', icon: 'Globe' }];
+    mobileRoot.innerHTML = links.map(item => `<a class="${item.href === currentFile ? 'active' : ''}" href="${item.href}"><span class="icon">${getIconEmoji(item.icon)}</span><span>${item.label}</span></a>`).join('');
   }
 
   document.querySelectorAll('[data-logout-btn]').forEach(btn => btn.addEventListener('click', logout));
@@ -2376,14 +2395,14 @@ function renderAdminShell(currentKey) {
   if (navRoot) {
     navRoot.innerHTML = `
       <a class="side-link" href="${routeTo('index.html')}">← Trang chủ website</a>
-      ${allowedNav.map(item => `<a class="side-link ${item.key === currentKey ? 'active' : ''}" href="${item.href}">${item.icon} ${item.label}</a>`).join('')}
+      ${allowedNav.map(item => `<a class="side-link ${item.key === currentKey ? 'active' : ''}" href="${item.href}">${getIconEmoji(item.icon)} ${item.label}</a>`).join('')}
     `;
   }
 
   const mobileRoot = document.querySelector('[data-admin-mobile-nav]');
   if (mobileRoot) {
-    const links = [...allowedNav, { href: routeTo('index.html'), key: 'site-home', label: 'Trang chủ', icon: '🌐' }];
-    mobileRoot.innerHTML = links.map(item => `<a class="${item.key === currentKey ? 'active' : ''}" href="${item.href}"><span class="icon">${item.icon}</span><span>${item.label}</span></a>`).join('');
+    const links = [...allowedNav, { href: routeTo('index.html'), key: 'site-home', label: 'Trang chủ', icon: 'Globe' }];
+    mobileRoot.innerHTML = links.map(item => `<a class="${item.key === currentKey ? 'active' : ''}" href="${item.href}"><span class="icon">${getIconEmoji(item.icon)}</span><span>${item.label}</span></a>`).join('');
   }
 
   return admin;
