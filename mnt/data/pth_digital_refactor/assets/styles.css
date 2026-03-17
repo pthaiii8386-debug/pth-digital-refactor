@@ -726,3 +726,27 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;background:ra
 @media (max-width:1120px){
   .service-form-layout{grid-template-columns:1fr}
 }
+
+.badge.info {
+  background: rgba(84, 167, 255, .14);
+  color: #8ec5ff;
+  border: 1px solid rgba(84, 167, 255, .24);
+}
+
+.badge.warning {
+  background: rgba(255, 193, 92, .12);
+  color: #ffd27d;
+  border: 1px solid rgba(255, 193, 92, .2);
+}
+
+.badge.danger {
+  background: rgba(255, 107, 129, .12);
+  color: #ff9aac;
+  border: 1px solid rgba(255, 107, 129, .2);
+}
+
+.badge.success {
+  background: rgba(38, 210, 120, .12);
+  color: #8cf0b4;
+  border: 1px solid rgba(38, 210, 120, .2);
+}

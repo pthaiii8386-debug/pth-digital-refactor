@@ -441,6 +441,63 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.classList.add('hidden'), 2600);
 }
 
+function makeOrderCode() {
+  return `DH-${Date.now()}`;
+}
+
+function pushOrderTimeline(order, action, actor = 'system', note = '') {
+  if (!order.timeline) order.timeline = [];
+  order.timeline.unshift({
+    action,
+    actor,
+    note,
+    createdAt: new Date().toLocaleString('vi-VN')
+  });
+}
+
+function ensureChatThread(state, customerId) {
+  let thread = state.chats.find(item => item.customerId === customerId);
+  if (!thread) {
+    thread = { customerId, messages: [] };
+    state.chats.push(thread);
+  }
+  return thread;
+}
+
+function addSystemMessageToChat(state, customerId, text) {
+  const thread = ensureChatThread(state, customerId);
+  thread.messages.push({
+    sender: 'admin',
+    text,
+    time: new Date().toLocaleString('vi-VN')
+  });
+}
+
+function orderStatusMeta(status) {
+  const map = {
+    pending: { label: 'Chờ xử lý', className: 'warning' },
+    processing: { label: 'Đang xử lý', className: 'info' },
+    need_info: { label: 'Cần bổ sung', className: 'warning' },
+    completed: { label: 'Hoàn thành', className: 'success' },
+    refunded: { label: 'Hoàn coin', className: 'success' },
+    rejected: { label: 'Từ chối', className: 'danger' }
+  };
+  return map[status] || { label: status || 'Không rõ', className: 'muted' };
+}
+
+function formatOrderStatus(status) {
+  return orderStatusMeta(status).label;
+}
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
   if (!button) return;
 
@@ -1061,17 +1118,26 @@ function openPurchaseModal(service, user) {
       return;
     }
     customer.balance -= total;
-    freshState.orders.unshift({
-      id: `OD-${Date.now()}`,
+    const newOrder = {
+      id: makeOrderCode(),
       customerId: customer.id,
       serviceId: service.id,
       serviceName: service.name,
       quantity,
       totalCoin: total,
-      note: String(document.getElementById('purchase-note')?.value || '').trim(),
       status: 'pending',
-      createdAt: nowString()
-    });
+      note: String(document.getElementById('purchase-note')?.value || '').trim(),
+      adminNote: '',
+      resultNote: '',
+      referenceCode: '',
+      refundAmount: 0,
+      createdAt: new Date().toLocaleString('vi-VN'),
+      updatedAt: new Date().toLocaleString('vi-VN'),
+      timeline: []
+    };
+
+    pushOrderTimeline(newOrder, 'Tạo đơn', 'customer', newOrder.note || 'Khách hàng vừa tạo đơn');
+    freshState.orders.unshift(newOrder);
     saveState(freshState);
     closeModal();
     showToast('Đã tạo đơn hàng mới.', 'success');
@@ -1261,51 +1327,108 @@ function renderWalletPage() {
 }
 
 function renderHistoryPage() {
-  const user = renderCustomerShell('history.html');
+  const user = renderCustomerShell('history');
   if (!user) return;
+
   const state = getState();
-  const orders = state.orders.filter(item => item.customerId === user.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  const deposits = state.deposits.filter(item => item.customerId === user.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const orders = state.orders.filter(order => order.customerId === user.id);
+  const deposits = state.deposits.filter(item => item.customerId === user.id);
+
   const ordersRoot = document.querySelector('[data-history-orders]');
   const depositsRoot = document.querySelector('[data-history-deposits]');
-  const purchasesRoot = document.querySelector('[data-history-purchases]');
 
   if (ordersRoot) {
-    ordersRoot.innerHTML = orders.length ? orders.map(item => `
-      <tr>
-        <td>${escapeHtml(item.id)}</td>
-        <td>${escapeHtml(item.serviceName)}</td>
-        <td>${item.quantity}</td>
-        <td>${formatCurrency(item.totalCoin)}</td>
-        <td>${statusBadge(item.status)}</td>
-        <td>${escapeHtml(item.createdAt)}</td>
-      </tr>
-    `).join('') : '<tr><td colspan="6"><div class="empty-state">Chưa có đơn hàng.</div></td></tr>';
+    ordersRoot.innerHTML = orders.length ? orders.map(order => {
+      const statusMeta = orderStatusMeta(order.status);
+      const timelineHtml = (order.timeline || []).slice(0, 4).map(item => `
+        <li>
+          <span>${escapeHtml(item.action)}</span>
+          <strong>${escapeHtml(item.createdAt)}</strong>
+        </li>
+      `).join('');
+
+      return `
+        <article class="card">
+          <div class="split-line">
+            <div>
+              <span class="mini-label">Mã đơn</span>
+              <h3>${escapeHtml(order.id)}</h3>
+            </div>
+            <span class="badge ${statusMeta.className}">${statusMeta.label}</span>
+          </div>
+
+          <div class="detail-list">
+            <li><span>Dịch vụ</span><strong>${escapeHtml(order.serviceName)}</strong></li>
+            <li><span>Số lượng</span><strong>${order.quantity}</strong></li>
+            <li><span>Tổng coin</span><strong>${formatCurrency(order.totalCoin)}</strong></li>
+            <li><span>Tạo lúc</span><strong>${escapeHtml(order.createdAt)}</strong></li>
+            <li><span>Cập nhật</span><strong>${escapeHtml(order.updatedAt || order.createdAt)}</strong></li>
+            <li><span>Tham chiếu</span><strong>${escapeHtml(order.referenceCode || 'Chưa có')}</strong></li>
+            <li><span>Hoàn coin</span><strong>${formatCurrency(order.refundAmount || 0)}</strong></li>
+          </div>
+
+          <div class="sub-card">
+            <span class="mini-label">Ghi chú của bạn</span>
+            <p>${escapeHtml(order.note || 'Không có')}</p>
+          </div>
+
+          <div class="sub-card">
+            <span class="mini-label">Ghi chú admin</span>
+            <p>${escapeHtml(order.adminNote || 'Chưa có')}</p>
+          </div>
+
+          <div class="sub-card">
+            <span class="mini-label">Kết quả xử lý</span>
+            <p>${escapeHtml(order.resultNote || 'Đơn đang được xử lý')}</p>
+          </div>
+
+          <div class="sub-card">
+            <span class="mini-label">Tiến trình gần nhất</span>
+            <ul class="detail-list">
+              ${timelineHtml || '<li><span>Chưa có tiến trình</span><strong>--</strong></li>'}
+            </ul>
+          </div>
+
+          <div class="page-tools">
+            <button class="btn ghost small" type="button" data-copy-order="${escapeHtml(order.id)}">Sao chép mã đơn</button>
+            <a class="btn secondary small" href="./support.html">Mở chat hỗ trợ</a>
+          </div>
+        </article>
+      `;
+    }).join('') : '<div class="empty-state">Chưa có đơn hàng nào.</div>';
+
+    ordersRoot.querySelectorAll('[data-copy-order]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(btn.dataset.copyOrder);
+          showToast('Đã sao chép mã đơn.', 'success');
+        } catch {
+          showToast('Không sao chép được mã đơn.', 'error');
+        }
+      });
+    });
   }
 
   if (depositsRoot) {
     depositsRoot.innerHTML = deposits.length ? deposits.map(item => `
-      <tr>
-        <td>${escapeHtml(item.id)}</td>
-        <td>${formatMoney(item.amount)}</td>
-        <td>${formatCurrency(item.coin)}</td>
-        <td>${statusBadge(item.status)}</td>
-        <td>${escapeHtml(item.note)}</td>
-        <td>${escapeHtml(item.createdAt)}</td>
-      </tr>
-    `).join('') : '<tr><td colspan="6"><div class="empty-state">Chưa có lịch sử nạp.</div></td></tr>';
-  }
-
-  if (purchasesRoot) {
-    purchasesRoot.innerHTML = orders.length ? orders.map(item => `
-      <tr>
-        <td>${escapeHtml(item.id)}</td>
-        <td>${escapeHtml(item.serviceName)}${item.note ? ` • ${escapeHtml(item.note)}` : ''}</td>
-        <td>${formatCurrency(item.totalCoin)}</td>
-        <td>${statusBadge(item.status)}</td>
-        <td>${escapeHtml(item.createdAt)}</td>
-      </tr>
-    `).join('') : '<tr><td colspan="5"><div class="empty-state">Chưa có lịch sử mua dịch vụ.</div></td></tr>';
+      <article class="card">
+        <div class="split-line">
+          <div>
+            <span class="mini-label">Mã nạp</span>
+            <h3>${escapeHtml(item.id)}</h3>
+          </div>
+          <span class="badge ${item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'danger' : 'warning'}">
+            ${item.status === 'approved' ? 'Đã duyệt' : item.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+          </span>
+        </div>
+        <div class="detail-list">
+          <li><span>Số tiền</span><strong>${formatCurrency(item.amount)}</strong></li>
+          <li><span>Coin</span><strong>${formatCurrency(item.coin)}</strong></li>
+          <li><span>Tạo lúc</span><strong>${escapeHtml(item.createdAt)}</strong></li>
+          <li><span>Nội dung</span><strong>${escapeHtml(item.note || '--')}</strong></li>
+        </div>
+      </article>
+    `).join('') : '<div class="empty-state">Chưa có lịch sử nạp coin.</div>';
   }
 }
 
@@ -2070,6 +2193,10 @@ function renderAdminOverviewPage() {
   const admin = renderAdminShell('admin-overview');
   if (!admin) return;
   const state = getState();
+  const orders = state.orders || [];
+  const pendingOrders = orders.filter(item => item.status === 'pending').length;
+  const processingOrders = orders.filter(item => item.status === 'processing').length;
+  const refundOrders = orders.filter(item => item.status === 'refunded').length;
   const customers = state.users.filter(user => user.role === 'customer');
   const pendingDeposits = state.deposits.filter(item => item.status === 'pending').length;
   const unreadThreads = state.chats.filter(thread => thread.messages[thread.messages.length - 1]?.sender === 'customer').length;
@@ -2079,6 +2206,9 @@ function renderAdminOverviewPage() {
     kpiRoot.innerHTML = `
       <div class="kpi-card"><span class="mini-label">Khách hàng</span><strong>${customers.length}</strong></div>
       <div class="kpi-card"><span class="mini-label">Dịch vụ mở bán</span><strong>${activeServices(state).length}</strong></div>
+      <div class="kpi-card"><span class="mini-label">Đơn chờ xử lý</span><strong>${pendingOrders}</strong></div>
+      <div class="kpi-card"><span class="mini-label">Đơn đang xử lý</span><strong>${processingOrders}</strong></div>
+      <div class="kpi-card"><span class="mini-label">Đơn hoàn coin</span><strong>${refundOrders}</strong></div>
       <div class="kpi-card"><span class="mini-label">Nạp chờ duyệt</span><strong>${pendingDeposits}</strong></div>
       <div class="kpi-card"><span class="mini-label">Hội thoại cần xem</span><strong>${unreadThreads}</strong></div>
     `;
@@ -2103,6 +2233,161 @@ function renderAdminOverviewPage() {
       return `<div class="list-card"><div class="customer-card-head"><strong>${escapeHtml(customer?.fullName || 'Khách hàng')}</strong>${statusBadge(item.status)}</div><div class="detail-row"><span>${escapeHtml(item.id)}</span><strong>${formatMoney(item.amount)}</strong></div><div class="muted">${escapeHtml(item.note)}</div></div>`;
     }).join('') : '<div class="empty-state">Hiện không có lệnh nạp nào chờ duyệt.</div>';
   }
+
+  const ordersRoot = document.querySelector('[data-admin-orders]');
+  if (ordersRoot) {
+    ordersRoot.innerHTML = `
+      <section class="card">
+        <div class="split-line">
+          <div>
+            <span class="mini-label">Đơn hàng realtime</span>
+            <h2>Danh sách đơn cần xử lý</h2>
+          </div>
+          <div class="page-tools">
+            <button class="tab-chip active" type="button" data-admin-order-filter="all">Tất cả</button>
+            <button class="tab-chip" type="button" data-admin-order-filter="pending">Chờ xử lý</button>
+            <button class="tab-chip" type="button" data-admin-order-filter="processing">Đang xử lý</button>
+            <button class="tab-chip" type="button" data-admin-order-filter="need_info">Cần bổ sung</button>
+            <button class="tab-chip" type="button" data-admin-order-filter="completed">Hoàn thành</button>
+            <button class="tab-chip" type="button" data-admin-order-filter="refunded">Hoàn coin</button>
+          </div>
+        </div>
+
+        <div data-admin-orders></div>
+      </section>
+    `;
+  }
+  renderAdminOrdersBlock();
+}
+
+function renderAdminOrdersBlock() {
+  const state = getState();
+  const root = document.querySelector('[data-admin-orders]');
+  if (!root) return;
+
+  let activeFilter = 'all';
+
+  function draw() {
+    const freshState = getState();
+    const usersMap = new Map((freshState.users || []).map(user => [user.id, user]));
+    const orders = (freshState.orders || []).filter(order => {
+      return activeFilter === 'all' ? true : order.status === activeFilter;
+    });
+
+    root.innerHTML = orders.length ? orders.map(order => {
+      const customer = usersMap.get(order.customerId);
+      const statusMeta = orderStatusMeta(order.status);
+
+      return `
+        <article class="card">
+          <div class="split-line">
+            <div>
+              <span class="mini-label">Mã đơn</span>
+              <h3>${escapeHtml(order.id)}</h3>
+              <p class="muted">${escapeHtml(customer?.fullName || customer?.username || 'Khách hàng')}</p>
+            </div>
+            <span class="badge ${statusMeta.className}">${statusMeta.label}</span>
+          </div>
+
+          <div class="detail-list">
+            <li><span>Dịch vụ</span><strong>${escapeHtml(order.serviceName)}</strong></li>
+            <li><span>Số lượng</span><strong>${order.quantity}</strong></li>
+            <li><span>Tổng coin</span><strong>${formatCurrency(order.totalCoin)}</strong></li>
+            <li><span>Ghi chú khách</span><strong>${escapeHtml(order.note || '--')}</strong></li>
+            <li><span>Tham chiếu</span><strong>${escapeHtml(order.referenceCode || '--')}</strong></li>
+            <li><span>Hoàn coin</span><strong>${formatCurrency(order.refundAmount || 0)}</strong></li>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span class="mini-label">Ghi chú admin</span>
+              <textarea class="textarea" rows="3" data-order-admin-note="${escapeHtml(order.id)}">${escapeHtml(order.adminNote || '')}</textarea>
+            </label>
+
+            <label>
+              <span class="mini-label">Kết quả xử lý</span>
+              <textarea class="textarea" rows="3" data-order-result-note="${escapeHtml(order.id)}">${escapeHtml(order.resultNote || '')}</textarea>
+            </label>
+
+            <label>
+              <span class="mini-label">Mã tham chiếu</span>
+              <input class="input" type="text" value="${escapeHtml(order.referenceCode || '')}" data-order-reference="${escapeHtml(order.id)}">
+            </label>
+
+            <label>
+              <span class="mini-label">Hoàn coin</span>
+              <input class="input" type="number" min="0" step="1" value="${Number(order.refundAmount || 0)}" data-order-refund="${escapeHtml(order.id)}">
+            </label>
+          </div>
+
+          <div class="page-tools">
+            <button class="btn secondary small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="processing">Nhận xử lý</button>
+            <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="need_info">Cần bổ sung</button>
+            <button class="btn primary small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="completed">Hoàn thành</button>
+            <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="rejected">Từ chối</button>
+            <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="refunded">Hoàn coin</button>
+            <button class="btn ghost small" type="button" data-open-customer-chat="${escapeHtml(order.customerId)}">Mở chat khách</button>
+          </div>
+        </article>
+      `;
+    }).join('') : '<div class="empty-state">Chưa có đơn phù hợp bộ lọc này.</div>';
+
+    root.querySelectorAll('[data-order-status]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const stateNow = getState();
+        const order = stateNow.orders.find(item => item.id === btn.dataset.orderStatus);
+        if (!order) return;
+
+        const adminNoteInput = document.querySelector(`[data-order-admin-note="${order.id}"]`);
+        const resultNoteInput = document.querySelector(`[data-order-result-note="${order.id}"]`);
+        const referenceInput = document.querySelector(`[data-order-reference="${order.id}"]`);
+        const refundInput = document.querySelector(`[data-order-refund="${order.id}"]`);
+
+        order.adminNote = adminNoteInput?.value.trim() || '';
+        order.resultNote = resultNoteInput?.value.trim() || '';
+        order.referenceCode = referenceInput?.value.trim() || '';
+        order.refundAmount = Number(refundInput?.value || 0);
+        order.status = btn.dataset.nextStatus;
+        order.updatedAt = new Date().toLocaleString('vi-VN');
+
+        if (order.status === 'refunded' && order.refundAmount > 0) {
+          const customer = stateNow.users.find(user => user.id === order.customerId);
+          if (customer) {
+            customer.balance += order.refundAmount;
+          }
+        }
+
+        pushOrderTimeline(order, `Cập nhật: ${formatOrderStatus(order.status)}`, 'admin', order.adminNote || order.resultNote || '');
+        addSystemMessageToChat(
+          stateNow,
+          order.customerId,
+          `Đơn ${order.id} đã được cập nhật sang trạng thái "${formatOrderStatus(order.status)}". ${order.resultNote ? `Kết quả: ${order.resultNote}` : ''} ${order.referenceCode ? `Mã tham chiếu: ${order.referenceCode}` : ''}`.trim()
+        );
+
+        saveState(stateNow).then(() => {
+          showToast('Đã cập nhật đơn hàng.', 'success');
+          draw();
+        });
+      });
+    });
+
+    root.querySelectorAll('[data-open-customer-chat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.location.href = './chat.html';
+      });
+    });
+  }
+
+  document.querySelectorAll('[data-admin-order-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-admin-order-filter]').forEach(item => item.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.adminOrderFilter;
+      draw();
+    });
+  });
+
+  draw();
 }
 
 function renderAdminServicesPage() {
