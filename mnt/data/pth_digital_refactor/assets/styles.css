@@ -34,7 +34,7 @@ button{cursor:pointer;border:none}
 .hidden{display:none!important}
 .muted{color:var(--muted)}
 .full{width:100%}
-.line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .site-header{
   position:sticky;top:0;z-index:50;
   backdrop-filter:blur(18px);

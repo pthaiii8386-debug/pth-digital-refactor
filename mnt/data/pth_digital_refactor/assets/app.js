@@ -1407,6 +1407,7 @@ function renderWalletPage() {
           <div><span>Chủ tài khoản</span><strong>${escapeHtml(state.payment.accountName)}</strong></div>
           <div><span>Số tài khoản</span><strong>${escapeHtml(state.payment.accountNumber)}</strong></div>
           <div><span>Email hỗ trợ</span><strong>${escapeHtml(state.company.supportEmail || 'Chưa cập nhật')}</strong></div>
+          <div><span>Telegram hỗ trợ</span><strong><a href="${state.company.supportTelegram}" target="_blank">@Mmo_white</a></strong></div>
           <div><span>Số điện thoại</span><strong>${escapeHtml(state.company.supportPhone || 'Chưa cập nhật')}</strong></div>
           <div><span>Địa chỉ</span><strong>${escapeHtml(state.company.address || 'Chưa cập nhật')}</strong></div>
         </div>
@@ -2823,6 +2824,7 @@ function renderAdminCompanySettings(state) {
       <div class="info-pairs">
         <div><span>Slogan</span><strong>${escapeHtml(state.company.slogan)}</strong></div>
         <div><span>Email hỗ trợ</span><strong>${escapeHtml(state.company.supportEmail)}</strong></div>
+        <div><span>Telegram hỗ trợ</span><strong><a href="${state.company.supportTelegram}" target="_blank">@Mmo_white</a></strong></div>
         <div><span>Điện thoại</span><strong>${escapeHtml(state.company.supportPhone)}</strong></div>
         <div><span>Địa chỉ</span><strong>${escapeHtml(state.company.address)}</strong></div>
         <div><span>Người phụ trách</span><strong>${escapeHtml(state.company.adminName)} • ${escapeHtml(state.company.adminTitle)}</strong></div>
@@ -2831,7 +2833,7 @@ function renderAdminCompanySettings(state) {
     `;
   }
   if (!form) return;
-  const fields = ['name','slogan','about','adminName','adminTitle','supportEmail','supportPhone','address','trustText'];
+  const fields = ['name','slogan','about','adminName','adminTitle','supportEmail','supportTelegram','supportPhone','address','trustText'];
   const getField = key => form.querySelector(`[name="${key}"]`);
   fields.forEach(key => { const input = getField(key); if (input) input.value = state.company[key] || ''; });
   if (!form.dataset.bound) {

@@ -137,6 +137,7 @@ function seedDb() {
       adminName: 'THANH HẢI',
       adminTitle: 'Founder & Digital Operations Lead',
       supportEmail: 'support@pthdigital.vn',
+      supportTelegram: 'https://t.me/Mmo_white',
       supportPhone: '0901 234 567',
       address: 'Quảng Trị, Việt Nam',
       trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.',
