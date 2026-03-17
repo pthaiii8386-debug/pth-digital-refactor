@@ -265,6 +265,23 @@ function seedDb() {
           { sender: 'customer', text: 'Cho mình hỏi khi nào duyệt lệnh nạp coin?', time: '15/03/2026 09:50' }
         ]
       }
+    ],
+    serviceRequests: [
+      {
+        id: 'REQ-001',
+        customerId: 'u1',
+        orderId: 'O-2401',
+        serviceName: 'Thiết kế landing page chuyên nghiệp',
+        quantity: 1,
+        totalCoin: 250000,
+        note: 'Cần landing page cho khóa học online, 3 tháng hoàn thành',
+        requestDetail: 'Landing page cho khóa học online',
+        targetLabel: 'Website',
+        status: 'completed',
+        adminNote: 'Đã hoàn thành, gửi link qua telegram',
+        adminSendDate: '16/03/2026 14:00',
+        createdAt: '15/03/2026 10:00'
+      }
     ]
   };
 }
@@ -509,6 +526,7 @@ function mergeAdminState(prev, incoming) {
   db.orders = Array.isArray(incoming.orders) ? incoming.orders : db.orders;
   db.deposits = Array.isArray(incoming.deposits) ? incoming.deposits : db.deposits;
   db.chats = Array.isArray(incoming.chats) ? incoming.chats : db.chats;
+  db.serviceRequests = Array.isArray(incoming.serviceRequests) ? incoming.serviceRequests : db.serviceRequests;
 
   recalcApprovedCredits(db, new Map(prev.deposits.map(item => [item.id, item])));
   return db;

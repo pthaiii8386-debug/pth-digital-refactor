@@ -195,6 +195,21 @@ const DEFAULT_STATE = {
         { sender: 'customer', text: 'Cho mình hỏi khi nào duyệt lệnh nạp coin?', time: '15/03/2026 09:50' }
       ]
     }
+  ],
+  serviceRequests: [
+    {
+      id: 'REQ-001',
+      customerId: 'u1',
+      orderId: 'O-2401',
+      serviceName: 'Thiết kế landing page chuyên nghiệp',
+      quantity: 1,
+      totalCoin: 250000,
+      note: 'Cần landing page cho khóa học online, 3 tháng hoàn thành',
+      status: 'completed',
+      adminNote: 'Đã hoàn thành, gửi link qua telegram',
+      adminSendDate: '16/03/2026 14:00',
+      createdAt: '15/03/2026 10:00'
+    }
   ]
 };
 
@@ -471,6 +486,10 @@ function refreshCurrentView() {
 
 function makeOrderCode() {
   return `DH-${Date.now()}`;
+}
+
+function makeRequestCode() {
+  return `REQ-${Date.now().toString().slice(-6)}`;
 }
 
 function pushOrderTimeline(order, action, actor = 'system', note = '') {
@@ -1324,6 +1343,24 @@ function renderServicesPage() {
       pushOrderTimeline(order, 'Tạo đơn', 'customer', order.note || order.requestDetail || 'Khách hàng vừa tạo đơn');
       fresh.orders.unshift(order);
 
+      // Tạo service request liên kết với order
+      const serviceRequest = {
+        id: makeRequestCode(),
+        customerId: latestCustomer.id,
+        orderId: order.id,
+        serviceName: latestService.name,
+        quantity,
+        totalCoin,
+        note: String(form.customerNote.value || '').trim() || String(form.requestDetail.value || '').trim(),
+        requestDetail: String(form.requestDetail.value || '').trim(),
+        targetLabel: String(form.targetLabel.value || '').trim(),
+        status: 'pending',
+        adminNote: '',
+        adminSendDate: '',
+        createdAt: new Date().toLocaleString('vi-VN')
+      };
+      fresh.serviceRequests.push(serviceRequest);
+
       saveState(fresh);
       closeModal();
       showToast('Đã tạo đơn hàng mới.', 'success');
@@ -1498,10 +1535,12 @@ function renderHistoryPage() {
   const state = getState();
   const orders = state.orders.filter(item => item.customerId === user.id);
   const deposits = state.deposits.filter(item => item.customerId === user.id);
+  const serviceRequests = (state.serviceRequests || []).filter(item => item.customerId === user.id);
 
   const ordersRoot = document.querySelector('[data-history-orders]');
   const depositsRoot = document.querySelector('[data-history-deposits]');
   const purchasesRoot = document.querySelector('[data-history-purchases]');
+  const requestsRoot = document.querySelector('[data-history-requests]');
 
   if (ordersRoot) {
     ordersRoot.innerHTML = orders.length ? orders.map(item => `
@@ -1567,6 +1606,29 @@ function renderHistoryPage() {
         </tr>
       `;
     }).join('') : '<tr><td colspan="5" class="muted">Chưa có lịch sử mua.</td></tr>';
+  }
+
+  if (requestsRoot) {
+    requestsRoot.innerHTML = serviceRequests.length ? serviceRequests.map(req => `
+      <tr>
+        <td>${escapeHtml(req.id)}</td>
+        <td>
+          <div><strong>${escapeHtml(req.serviceName)}</strong></div>
+          <div class="cell-muted">Chi tiết: ${escapeHtml(req.requestDetail || '--')}</div>
+          <div class="cell-muted">Mục cần xử lý: ${escapeHtml(req.targetLabel || '--')}</div>
+        </td>
+        <td>
+          <div><strong>${escapeHtml(req.adminNote || 'Chờ admin xử lý')}</strong></div>
+          <div class="cell-muted">Ghi chú: ${escapeHtml(req.note || '--')}</div>
+        </td>
+        <td>${formatCurrency(req.totalCoin)}</td>
+        <td>
+          ${statusBadge(req.status)}
+          <div class="cell-muted" style="margin-top:6px;">Gửi ngày: ${escapeHtml(req.adminSendDate || '--')}</div>
+        </td>
+        <td>${escapeHtml(req.createdAt)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" class="muted">Chưa có yêu cầu dịch vụ nào.</td></tr>';
   }
 }
 
@@ -2497,6 +2559,138 @@ function renderAdminOrdersSection(state) {
   });
 }
 
+function renderAdminServiceRequestsSection(state) {
+  const adminMain = document.querySelector('.admin-main');
+  if (!adminMain) return;
+
+  let section = adminMain.querySelector('[data-admin-requests-section]');
+  if (!section) {
+    section = document.createElement('section');
+    section.className = 'card shell-card';
+    section.setAttribute('data-admin-requests-section', '');
+    const ordersSection = adminMain.querySelector('[data-admin-orders-section]');
+    adminMain.insertBefore(section, ordersSection?.nextElementSibling || adminMain.lastElementChild);
+  }
+
+  const activeFilter = section.dataset.filter || 'all';
+  const filterButtons = [
+    ['all', 'Tất cả'],
+    ['pending', 'Chờ xử lý'],
+    ['processing', 'Đang xử lý'],
+    ['completed', 'Hoàn thành'],
+    ['refunded', 'Hoàn coin']
+  ];
+
+  const requests = (state.serviceRequests || []).filter(req => activeFilter === 'all' ? true : req.status === activeFilter);
+
+  section.innerHTML = `
+    <div class="section-head compact">
+      <div>
+        <span class="mini-label">TinOtp - Yêu cầu dịch vụ</span>
+        <h2>Quản lý yêu cầu gửi số/OTP từ khách hàng</h2>
+        <p>Khách hàng gửi yêu cầu, admin xử lý và gửi kết quả, hoặc hoàn coin nếu không thể thực hiện.</p>
+      </div>
+    </div>
+
+    <div class="tab-scroll admin-filter-chips" data-admin-request-filters>
+      ${filterButtons.map(([key, label]) => `
+        <button class="tab-chip ${key === activeFilter ? 'active' : ''}" type="button" data-admin-request-filter="${key}">
+          ${label}
+        </button>
+      `).join('')}
+    </div>
+
+    <div class="admin-order-grid" data-admin-requests-root></div>
+  `;
+
+  const root = section.querySelector('[data-admin-requests-root]');
+
+  root.innerHTML = requests.length ? requests.map(req => {
+    const customer = state.users.find(user => user.id === req.customerId);
+    const statusMeta = orderStatusMeta(req.status);
+
+    return `
+      <article class="shell-card admin-order-card">
+        <div class="split-line">
+          <div>
+            <span class="mini-label">Mã yêu cầu</span>
+            <h3>${escapeHtml(req.id)}</h3>
+            <p class="muted">${escapeHtml(customer?.fullName || customer?.username || 'Khách hàng')}</p>
+          </div>
+          <span class="badge ${statusMeta.className}">${statusMeta.label}</span>
+        </div>
+
+        <div class="detail-list">
+          <li><span>Dịch vụ</span><strong>${escapeHtml(req.serviceName)}</strong></li>
+          <li><span>Chi tiết yêu cầu</span><strong>${escapeHtml(req.requestDetail || '--')}</strong></li>
+          <li><span>Mục cần xử lý</span><strong>${escapeHtml(req.targetLabel || '--')}</strong></li>
+          <li><span>Số lượng</span><strong>${req.quantity}</strong></li>
+          <li><span>Tổng coin</span><strong>${formatCurrency(req.totalCoin)}</strong></li>
+          <li><span>Ghi chú khách</span><strong>${escapeHtml(req.note || '--')}</strong></li>
+        </div>
+
+        <div class="admin-order-fields">
+          <label>
+            <span class="mini-label">Ghi chú admin + kết quả xử lý</span>
+            <textarea class="textarea" rows="4" data-request-admin-note="${escapeHtml(req.id)}">${escapeHtml(req.adminNote || '')}</textarea>
+          </label>
+
+          <label>
+            <span class="mini-label">Ngày gửi kết quả</span>
+            <input class="input" type="text" value="${escapeHtml(req.adminSendDate || '')}" data-request-send-date="${escapeHtml(req.id)}" placeholder="Ví dụ: 17/03/2026 14:30">
+          </label>
+        </div>
+
+        <div class="table-actions admin-order-actions">
+          <button class="btn secondary small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="processing">Đang xử lý</button>
+          <button class="btn primary small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="completed">Đã gửi kết quả</button>
+          <button class="btn ghost small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="refunded">Hoàn coin</button>
+        </div>
+      </article>
+    `;
+  }).join('') : '<div class="empty-state">Chưa có yêu cầu dịch vụ nào.</div>';
+
+  section.querySelectorAll('[data-admin-request-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      section.dataset.filter = btn.dataset.adminRequestFilter;
+      renderAdminServiceRequestsSection(getState());
+    });
+  });
+
+  root.querySelectorAll('[data-request-status]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stateNow = getState();
+      const request = stateNow.serviceRequests.find(item => item.id === btn.dataset.requestStatus);
+      if (!request) return;
+
+      const adminNoteInput = root.querySelector(`[data-request-admin-note="${request.id}"]`);
+      const sendDateInput = root.querySelector(`[data-request-send-date="${request.id}"]`);
+
+      request.adminNote = String(adminNoteInput?.value || '').trim();
+      request.adminSendDate = String(sendDateInput?.value || '').trim();
+      request.status = btn.dataset.nextStatus;
+
+      // Nếu hoàn coin, hoàn lại cho khách hàng
+      if (request.status === 'refunded') {
+        const customer = stateNow.users.find(user => user.id === request.customerId);
+        if (customer) {
+          customer.balance += request.totalCoin;
+        }
+      }
+
+      addSystemMessageToChat(
+        stateNow,
+        request.customerId,
+        `Yêu cầu ${request.id} đã được cập nhật: ${request.status === 'completed' ? 'Đã gửi kết quả' : request.status === 'refunded' ? 'Hoàn lại coin' : 'Đang xử lý'}. ${request.adminNote ? `Ghi chú: ${request.adminNote}` : ''}`.trim()
+      );
+
+      saveState(stateNow);
+      showToast('Đã cập nhật yêu cầu dịch vụ.', 'success');
+      renderAdminPage();
+    });
+  });
+}
+
 function renderAdminOverviewPage() {
   const admin = renderAdminShell('admin-overview');
   if (!admin) return;
@@ -2566,6 +2760,7 @@ function renderAdminOverviewPage() {
     `;
   }
   renderAdminOrdersSection(state);
+  renderAdminServiceRequestsSection(state);
 }
 
 function renderAdminOrdersBlock() {
