@@ -2,7 +2,7 @@
   "meta": {
     "version": 1,
     "createdAt": "2026-03-15T10:44:36.895Z",
-    "updatedAt": "2026-03-16T16:54:02.465Z",
+    "updatedAt": "2026-03-17T14:23:31.191Z",
     "syncRunAt": null
   },
   "company": {
@@ -95,7 +95,7 @@
       "email": "minhanh@gmail.com",
       "phone": "0988 223 111",
       "address": "Quận 7, TP.HCM",
-      "balance": 172700,
+      "balance": 168400,
       "bio": "Khách hàng dùng gói social và chăm sóc fanpage.",
       "avatar": "",
       "status": "active",
@@ -271,6 +271,17 @@
     }
   ],
   "orders": [
+    {
+      "id": "OD-20260317-0001",
+      "customerId": "u1",
+      "serviceId": "sv_tinotp_google",
+      "serviceName": "Thuê số OTP Gmail / Google",
+      "quantity": 1,
+      "totalCoin": 4300,
+      "note": "",
+      "status": "pending",
+      "createdAt": "21:23:31 17/3/2026"
+    },
     {
       "id": "OD-20260316-0003",
       "customerId": "u1",

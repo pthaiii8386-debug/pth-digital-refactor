@@ -404,9 +404,12 @@ function rerenderPage() {
 function statusBadge(status) {
   const map = {
     approved: ['success', 'Đã duyệt'],
-    completed: ['success', 'Hoàn tất'],
+    completed: ['success', 'Hoàn thành'],
     active: ['success', 'Đang bật'],
     pending: ['warning', 'Chờ xử lý'],
+    processing: ['info', 'Đang xử lý'],
+    need_info: ['warning', 'Cần bổ sung'],
+    refunded: ['success', 'Hoàn coin'],
     inactive: ['danger', 'Đang ẩn'],
     rejected: ['danger', 'Từ chối']
   };
@@ -439,6 +442,31 @@ function showToast(message, type = 'info') {
   toast.textContent = message;
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), 2600);
+}
+
+function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
+  if (!button) return;
+
+  if (busy) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-busy');
+    button.innerHTML = busyText;
+    return;
+  }
+
+  button.disabled = false;
+  button.classList.remove('is-busy');
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+function refreshCurrentView() {
+  window.location.reload();
 }
 
 function makeOrderCode() {
@@ -496,6 +524,15 @@ function escapeHtml(value = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(String(text || ''));
+    showToast('Đã sao chép.', 'success');
+  } catch {
+    showToast('Không sao chép được.', 'error');
+  }
 }
 
 function setButtonBusy(button, busy, busyText = 'Đang xử lý...') {
@@ -1146,7 +1183,7 @@ function openPurchaseModal(service, user) {
 }
 
 function renderServicesPage() {
-  const user = renderCustomerShell('services.html');
+  const user = renderCustomerShell('services');
   if (!user) return;
   const state = getState();
   const services = activeServices(state);
@@ -1154,7 +1191,6 @@ function renderServicesPage() {
   const tabs = document.querySelector('[data-service-tabs]');
   const grid = document.querySelector('[data-service-list]');
   const summary = document.querySelector('[data-service-page-summary]');
-  let currentCategory = 'Tất cả';
 
   if (summary) {
     summary.innerHTML = `
@@ -1164,50 +1200,178 @@ function renderServicesPage() {
     `;
   }
 
-  const drawServices = () => {
-    const filtered = currentCategory === 'Tất cả' ? services : services.filter(service => service.category === currentCategory);
-    if (tabs) {
-      tabs.innerHTML = categories.map(category => `<button class="tab-chip ${category === currentCategory ? 'active' : ''}" type="button" data-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`).join('');
-      tabs.querySelectorAll('[data-category]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          currentCategory = btn.dataset.category;
-          drawServices();
-        });
-      });
-    }
-    if (grid) {
-      grid.innerHTML = filtered.map(service => `
-        <article class="service-card">
-          <div class="service-meta">
-            <span class="badge">${escapeHtml(service.category)}</span>
-            ${service.featured ? '<span class="badge success">Nổi bật</span>' : ''}
-          </div>
-          <h3>${escapeHtml(service.name)}</h3>
-          <p>${escapeHtml(service.description)}</p>
-          <div class="feature-list">
-            <article><strong>Đơn hàng rõ ràng</strong><div class="muted">Có bước xem chi tiết, chỉnh số lượng rồi mới xác nhận.</div></article>
-            <article><strong>Dễ thoát ra xem thêm</strong><div class="muted">Có quay lại và vẫn nhìn ra các danh mục khác trên sidebar/mobile nav.</div></article>
-          </div>
-          <div class="service-tags">${service.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
-          <div class="split-line service-actions">
-            <div>
-              <div class="price-hero">${formatCurrency(service.price)}</div>
-              <span class="muted">/${escapeHtml(service.unit)}</span>
+  let currentCategory = 'Tất cả';
+
+  function openOrderModal(serviceId) {
+    const freshState = getState();
+    const customer = freshState.users.find(item => item.id === user.id);
+    const service = serviceById(freshState, serviceId);
+    if (!service || !customer) return;
+
+    const html = `
+      <div class="modal-body">
+        <span class="mini-label">Xác nhận mua dịch vụ</span>
+        <h2>${escapeHtml(service.name)}</h2>
+        <p class="muted">${escapeHtml(service.description || '')}</p>
+
+        <div class="summary-grid">
+          <div class="summary-item"><span class="mini-label">Đơn giá</span><strong>${formatCurrency(service.price)}</strong></div>
+          <div class="summary-item"><span class="mini-label">Đơn vị</span><strong>${escapeHtml(service.unit)}</strong></div>
+          <div class="summary-item"><span class="mini-label">Số dư</span><strong>${formatCurrency(customer.balance)}</strong></div>
+        </div>
+
+        <form id="customer-order-detail-form" class="form-grid">
+          <label>
+            <span class="mini-label">Số lượng</span>
+            <input class="input" type="number" name="quantity" min="1" step="1" value="1">
+          </label>
+
+          <label>
+            <span class="mini-label">Yêu cầu dịch vụ</span>
+            <input class="input" type="text" name="requestDetail" placeholder="Ví dụ: gói cần xử lý, nền tảng, khu vực, yêu cầu cụ thể...">
+          </label>
+
+          <label>
+            <span class="mini-label">Mục cần admin xử lý</span>
+            <input class="input" type="text" name="targetLabel" placeholder="Ví dụ: Facebook, Gmail, nền tảng cần xử lý...">
+          </label>
+
+          <label>
+            <span class="mini-label">Ghi chú thêm</span>
+            <textarea class="textarea" name="customerNote" rows="4" placeholder="Ghi rõ yêu cầu để admin xử lý nhanh hơn."></textarea>
+          </label>
+
+          <div class="sub-card">
+            <span class="mini-label">Xem trước đơn hàng</span>
+            <div id="order-preview-box">
+              <div class="detail-row"><span>Tổng coin</span><strong>${formatCurrency(service.price)}</strong></div>
+              <div class="detail-row"><span>Trạng thái tạo đơn</span><strong>Chờ xử lý</strong></div>
             </div>
+          </div>
+
+          <div class="page-tools">
+            <button class="btn ghost" type="button" data-close-modal>✕ Không mua nữa</button>
+            <button class="btn primary" type="submit" id="confirm-order-btn">Xác nhận mua ngay</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    openModal(html);
+
+    const form = document.getElementById('customer-order-detail-form');
+    const preview = document.getElementById('order-preview-box');
+    const submitBtn = document.getElementById('confirm-order-btn');
+
+    const updatePreview = () => {
+      const qty = Math.max(1, Number(form.quantity.value || 1));
+      const totalCoin = Number(service.price || 0) * qty;
+      preview.innerHTML = `
+        <div class="detail-row"><span>Số lượng</span><strong>${qty}</strong></div>
+        <div class="detail-row"><span>Tổng coin</span><strong>${formatCurrency(totalCoin)}</strong></div>
+        <div class="detail-row"><span>Số dư sau mua</span><strong>${formatCurrency(customer.balance - totalCoin)}</strong></div>
+      `;
+    };
+
+    form.quantity.addEventListener('input', updatePreview);
+    updatePreview();
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      setButtonBusy(submitBtn, true, 'Đang tạo đơn...');
+
+      const fresh = getState();
+      const latestCustomer = fresh.users.find(item => item.id === user.id);
+      const latestService = serviceById(fresh, serviceId);
+      if (!latestCustomer || !latestService) {
+        setButtonBusy(submitBtn, false);
+        return;
+      }
+
+      const quantity = Math.max(1, Number(form.quantity.value || 1));
+      const totalCoin = Number(latestService.price || 0) * quantity;
+
+      if (latestCustomer.balance < totalCoin) {
+        setButtonBusy(submitBtn, false);
+        showToast('Số dư chưa đủ, vui lòng nạp thêm coin.', 'error');
+        return;
+      }
+
+      latestCustomer.balance -= totalCoin;
+
+      const order = {
+        id: makeOrderCode(),
+        customerId: latestCustomer.id,
+        serviceId: latestService.id,
+        serviceName: latestService.name,
+        quantity,
+        totalCoin,
+        status: 'pending',
+        requestDetail: String(form.requestDetail.value || '').trim(),
+        targetLabel: String(form.targetLabel.value || '').trim(),
+        note: String(form.customerNote.value || '').trim(),
+        adminNote: '',
+        resultNote: '',
+        referenceCode: '',
+        refundAmount: 0,
+        refundApplied: false,
+        createdAt: new Date().toLocaleString('vi-VN'),
+        updatedAt: new Date().toLocaleString('vi-VN'),
+        timeline: []
+      };
+
+      pushOrderTimeline(order, 'Tạo đơn', 'customer', order.note || order.requestDetail || 'Khách hàng vừa tạo đơn');
+      fresh.orders.unshift(order);
+
+      saveState(fresh);
+      closeModal();
+      showToast('Đã tạo đơn hàng mới.', 'success');
+      refreshCurrentView();
+    });
+  }
+
+  function drawServices() {
+    const filtered = currentCategory === 'Tất cả' ? services : services.filter(service => service.category === currentCategory);
+    tabs.innerHTML = categories.map(category => `<button class="tab-chip ${category === currentCategory ? 'active' : ''}" type="button" data-category="${category}">${category}</button>`).join('');
+    grid.innerHTML = filtered.map(service => `
+      <article class="service-card">
+        <div class="service-meta">
+          <span class="badge">${escapeHtml(service.category)}</span>
+          ${service.featured ? '<span class="badge success">Nổi bật</span>' : ''}
+        </div>
+        <h3>${escapeHtml(service.name)}</h3>
+        <p>${escapeHtml(service.description)}</p>
+        <div class="feature-list">
+          <article><strong>Đặt dịch vụ rõ ràng</strong><div class="muted">Khách tạo đơn, admin nhận xử lý và cập nhật trạng thái trực tiếp.</div></article>
+          <article><strong>Theo dõi dễ hơn</strong><div class="muted">Lịch sử đơn hàng sẽ hiển thị ghi chú, kết quả xử lý và hoàn coin nếu có.</div></article>
+        </div>
+        <div class="service-tags">${service.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+        <div class="split-line service-actions">
+          <div>
+            <div class="price-hero">${formatCurrency(service.price)}</div>
+            <span class="muted">/${escapeHtml(service.unit)}</span>
+          </div>
+          <div class="table-actions">
+            <button class="btn ghost small" type="button" data-service-detail="${service.id}">Xem chi tiết</button>
             <button class="btn primary small" type="button" data-buy-service="${service.id}">Mua ngay</button>
           </div>
-        </article>
-      `).join('');
-      grid.querySelectorAll('[data-buy-service]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const freshService = serviceById(getState(), btn.dataset.buyService);
-          if (freshService) openPurchaseModal(freshService, getCurrentUser());
-        });
-      });
-    }
-  };
+        </div>
+      </article>
+    `).join('');
 
-  drawServices();
+    tabs.querySelectorAll('[data-category]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentCategory = btn.dataset.category;
+        drawServices();
+      });
+    });
+
+    grid.querySelectorAll('[data-buy-service], [data-service-detail]').forEach(btn => {
+      btn.addEventListener('click', () => openOrderModal(btn.dataset.buyService || btn.dataset.serviceDetail));
+    });
+  }
+
+  if (tabs && grid) drawServices();
 }
 
 function renderWalletPage() {
@@ -1329,106 +1493,78 @@ function renderWalletPage() {
 function renderHistoryPage() {
   const user = renderCustomerShell('history');
   if (!user) return;
-
   const state = getState();
-  const orders = state.orders.filter(order => order.customerId === user.id);
+  const orders = state.orders.filter(item => item.customerId === user.id);
   const deposits = state.deposits.filter(item => item.customerId === user.id);
 
   const ordersRoot = document.querySelector('[data-history-orders]');
   const depositsRoot = document.querySelector('[data-history-deposits]');
+  const purchasesRoot = document.querySelector('[data-history-purchases]');
 
   if (ordersRoot) {
-    ordersRoot.innerHTML = orders.length ? orders.map(order => {
-      const statusMeta = orderStatusMeta(order.status);
-      const timelineHtml = (order.timeline || []).slice(0, 4).map(item => `
-        <li>
-          <span>${escapeHtml(item.action)}</span>
-          <strong>${escapeHtml(item.createdAt)}</strong>
-        </li>
-      `).join('');
-
-      return `
-        <article class="card">
-          <div class="split-line">
-            <div>
-              <span class="mini-label">Mã đơn</span>
-              <h3>${escapeHtml(order.id)}</h3>
-            </div>
-            <span class="badge ${statusMeta.className}">${statusMeta.label}</span>
+    ordersRoot.innerHTML = orders.length ? orders.map(item => `
+      <tr>
+        <td>
+          <div><strong>${escapeHtml(item.id)}</strong></div>
+          <div class="table-actions" style="margin-top:8px;">
+            <button class="btn ghost small" type="button" data-copy-order="${escapeHtml(item.id)}">Sao chép mã</button>
           </div>
-
-          <div class="detail-list">
-            <li><span>Dịch vụ</span><strong>${escapeHtml(order.serviceName)}</strong></li>
-            <li><span>Số lượng</span><strong>${order.quantity}</strong></li>
-            <li><span>Tổng coin</span><strong>${formatCurrency(order.totalCoin)}</strong></li>
-            <li><span>Tạo lúc</span><strong>${escapeHtml(order.createdAt)}</strong></li>
-            <li><span>Cập nhật</span><strong>${escapeHtml(order.updatedAt || order.createdAt)}</strong></li>
-            <li><span>Tham chiếu</span><strong>${escapeHtml(order.referenceCode || 'Chưa có')}</strong></li>
-            <li><span>Hoàn coin</span><strong>${formatCurrency(order.refundAmount || 0)}</strong></li>
-          </div>
-
-          <div class="sub-card">
-            <span class="mini-label">Ghi chú của bạn</span>
-            <p>${escapeHtml(order.note || 'Không có')}</p>
-          </div>
-
-          <div class="sub-card">
-            <span class="mini-label">Ghi chú admin</span>
-            <p>${escapeHtml(order.adminNote || 'Chưa có')}</p>
-          </div>
-
-          <div class="sub-card">
-            <span class="mini-label">Kết quả xử lý</span>
-            <p>${escapeHtml(order.resultNote || 'Đơn đang được xử lý')}</p>
-          </div>
-
-          <div class="sub-card">
-            <span class="mini-label">Tiến trình gần nhất</span>
-            <ul class="detail-list">
-              ${timelineHtml || '<li><span>Chưa có tiến trình</span><strong>--</strong></li>'}
-            </ul>
-          </div>
-
-          <div class="page-tools">
-            <button class="btn ghost small" type="button" data-copy-order="${escapeHtml(order.id)}">Sao chép mã đơn</button>
-            <a class="btn secondary small" href="./support.html">Mở chat hỗ trợ</a>
-          </div>
-        </article>
-      `;
-    }).join('') : '<div class="empty-state">Chưa có đơn hàng nào.</div>';
+        </td>
+        <td>
+          <div><strong>${escapeHtml(item.serviceName)}</strong></div>
+          <div class="cell-muted">Yêu cầu: ${escapeHtml(item.requestDetail || '--')}</div>
+          <div class="cell-muted">Mục xử lý: ${escapeHtml(item.targetLabel || '--')}</div>
+          <div class="cell-muted">Ghi chú khách: ${escapeHtml(item.note || '--')}</div>
+        </td>
+        <td>${item.quantity}</td>
+        <td>${formatCurrency(item.totalCoin)}</td>
+        <td>
+          ${statusBadge(item.status)}
+          <div class="cell-muted" style="margin-top:6px;">Tham chiếu: ${escapeHtml(item.referenceCode || '--')}</div>
+          <div class="cell-muted">Hoàn coin: ${formatCurrency(item.refundAmount || 0)}</div>
+        </td>
+        <td>
+          <div>${escapeHtml(item.createdAt)}</div>
+          <div class="cell-muted">Cập nhật: ${escapeHtml(item.updatedAt || item.createdAt)}</div>
+        </td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" class="muted">Chưa có đơn hàng.</td></tr>';
 
     ordersRoot.querySelectorAll('[data-copy-order]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(btn.dataset.copyOrder);
-          showToast('Đã sao chép mã đơn.', 'success');
-        } catch {
-          showToast('Không sao chép được mã đơn.', 'error');
-        }
-      });
+      btn.addEventListener('click', () => copyText(btn.dataset.copyOrder));
     });
   }
 
   if (depositsRoot) {
     depositsRoot.innerHTML = deposits.length ? deposits.map(item => `
-      <article class="card">
-        <div class="split-line">
-          <div>
-            <span class="mini-label">Mã nạp</span>
-            <h3>${escapeHtml(item.id)}</h3>
-          </div>
-          <span class="badge ${item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'danger' : 'warning'}">
-            ${item.status === 'approved' ? 'Đã duyệt' : item.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
-          </span>
-        </div>
-        <div class="detail-list">
-          <li><span>Số tiền</span><strong>${formatCurrency(item.amount)}</strong></li>
-          <li><span>Coin</span><strong>${formatCurrency(item.coin)}</strong></li>
-          <li><span>Tạo lúc</span><strong>${escapeHtml(item.createdAt)}</strong></li>
-          <li><span>Nội dung</span><strong>${escapeHtml(item.note || '--')}</strong></li>
-        </div>
-      </article>
-    `).join('') : '<div class="empty-state">Chưa có lịch sử nạp coin.</div>';
+      <tr>
+        <td>${escapeHtml(item.id)}</td>
+        <td>${formatMoney(item.amount)}</td>
+        <td>${formatCurrency(item.coin)}</td>
+        <td>${statusBadge(item.status)}</td>
+        <td>${escapeHtml(item.note || '')}</td>
+        <td>${escapeHtml(item.createdAt)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" class="muted">Chưa có lệnh nạp.</td></tr>';
+  }
+
+  if (purchasesRoot) {
+    purchasesRoot.innerHTML = orders.length ? orders.map(item => {
+      const latestStep = item.timeline?.[0];
+      return `
+        <tr>
+          <td>${escapeHtml(item.id)}</td>
+          <td>
+            <div><strong>Kết quả xử lý:</strong> ${escapeHtml(item.resultNote || 'Đang chờ admin xử lý')}</div>
+            <div class="cell-muted">Ghi chú admin: ${escapeHtml(item.adminNote || '--')}</div>
+            <div class="cell-muted">Tiến trình mới nhất: ${escapeHtml(latestStep?.action || '--')}</div>
+          </td>
+          <td>${formatCurrency(item.totalCoin)}</td>
+          <td>${statusBadge(item.status)}</td>
+          <td>${escapeHtml(latestStep?.createdAt || item.updatedAt || item.createdAt)}</td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="5" class="muted">Chưa có lịch sử mua.</td></tr>';
   }
 }
 
@@ -2189,6 +2325,176 @@ function renderAdminShell(currentKey) {
   return admin;
 }
 
+function renderAdminOrdersSection(state) {
+  const adminMain = document.querySelector('.admin-main');
+  if (!adminMain) return;
+
+  let section = adminMain.querySelector('[data-admin-orders-section]');
+  if (!section) {
+    section = document.createElement('section');
+    section.className = 'card shell-card';
+    section.setAttribute('data-admin-orders-section', '');
+    const beforeNode = adminMain.querySelector('.history-columns');
+    adminMain.insertBefore(section, beforeNode || adminMain.lastElementChild);
+  }
+
+  const activeFilter = section.dataset.filter || 'all';
+  const filterButtons = [
+    ['all', 'Tất cả'],
+    ['pending', 'Chờ xử lý'],
+    ['processing', 'Đang xử lý'],
+    ['need_info', 'Cần bổ sung'],
+    ['completed', 'Hoàn thành'],
+    ['refunded', 'Hoàn coin'],
+    ['rejected', 'Từ chối']
+  ];
+
+  const orders = (state.orders || []).filter(order => activeFilter === 'all' ? true : order.status === activeFilter);
+
+  section.innerHTML = `
+    <div class="section-head compact">
+      <div>
+        <span class="mini-label">Đơn hàng realtime</span>
+        <h2>Admin xử lý đơn hàng của khách</h2>
+        <p>Giữ nguyên các mục cũ, chỉ thêm bảng xử lý đơn để admin đổi trạng thái, ghi chú, hoàn coin và thông báo sang chat.</p>
+      </div>
+    </div>
+
+    <div class="tab-scroll admin-filter-chips" data-admin-order-filters>
+      ${filterButtons.map(([key, label]) => `
+        <button class="tab-chip ${key === activeFilter ? 'active' : ''}" type="button" data-admin-order-filter="${key}">
+          ${label}
+        </button>
+      `).join('')}
+    </div>
+
+    <div class="admin-order-grid" data-admin-orders-root></div>
+  `;
+
+  const root = section.querySelector('[data-admin-orders-root]');
+
+  root.innerHTML = orders.length ? orders.map(order => {
+    const customer = state.users.find(user => user.id === order.customerId);
+    const statusMeta = orderStatusMeta(order.status);
+
+    return `
+      <article class="shell-card admin-order-card">
+        <div class="split-line">
+          <div>
+            <span class="mini-label">Mã đơn</span>
+            <h3>${escapeHtml(order.id)}</h3>
+            <p class="muted">${escapeHtml(customer?.fullName || customer?.username || 'Khách hàng')}</p>
+          </div>
+          <span class="badge ${statusMeta.className}">${statusMeta.label}</span>
+        </div>
+
+        <div class="detail-list">
+          <li><span>Dịch vụ</span><strong>${escapeHtml(order.serviceName)}</strong></li>
+          <li><span>Số lượng</span><strong>${order.quantity}</strong></li>
+          <li><span>Tổng coin</span><strong>${formatCurrency(order.totalCoin)}</strong></li>
+          <li><span>Yêu cầu</span><strong>${escapeHtml(order.requestDetail || '--')}</strong></li>
+          <li><span>Mục xử lý</span><strong>${escapeHtml(order.targetLabel || '--')}</strong></li>
+          <li><span>Ghi chú khách</span><strong>${escapeHtml(order.note || '--')}</strong></li>
+        </div>
+
+        <div class="admin-order-fields">
+          <label>
+            <span class="mini-label">Ghi chú admin</span>
+            <textarea class="textarea" rows="3" data-order-admin-note="${escapeHtml(order.id)}">${escapeHtml(order.adminNote || '')}</textarea>
+          </label>
+
+          <label>
+            <span class="mini-label">Kết quả xử lý</span>
+            <textarea class="textarea" rows="3" data-order-result-note="${escapeHtml(order.id)}">${escapeHtml(order.resultNote || '')}</textarea>
+          </label>
+
+          <label>
+            <span class="mini-label">Mã tham chiếu</span>
+            <input class="input" type="text" value="${escapeHtml(order.referenceCode || '')}" data-order-reference="${escapeHtml(order.id)}" placeholder="Ví dụ: REF-2026-001">
+          </label>
+
+          <label>
+            <span class="mini-label">Hoàn coin</span>
+            <input class="input" type="number" min="0" step="1" value="${Number(order.refundAmount || 0)}" data-order-refund="${escapeHtml(order.id)}">
+          </label>
+        </div>
+
+        <div class="table-actions admin-order-actions">
+          <button class="btn secondary small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="processing">Nhận xử lý</button>
+          <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="need_info">Cần bổ sung</button>
+          <button class="btn primary small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="completed">Hoàn thành</button>
+          <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="rejected">Từ chối</button>
+          <button class="btn ghost small" type="button" data-order-status="${escapeHtml(order.id)}" data-next-status="refunded">Hoàn coin</button>
+          <button class="btn ghost small" type="button" data-copy-order-ref="${escapeHtml(order.referenceCode || '')}">Sao chép tham chiếu</button>
+        </div>
+      </article>
+    `;
+  }).join('') : '<div class="empty-state">Chưa có đơn hàng phù hợp bộ lọc này.</div>';
+
+  section.querySelectorAll('[data-admin-order-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      section.dataset.filter = btn.dataset.adminOrderFilter;
+      renderAdminOrdersSection(getState());
+    });
+  });
+
+  root.querySelectorAll('[data-copy-order-ref]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.copyOrderRef;
+      if (!value) {
+        showToast('Đơn này chưa có mã tham chiếu.', 'error');
+        return;
+      }
+      copyText(value);
+    });
+  });
+
+  root.querySelectorAll('[data-order-status]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stateNow = getState();
+      const order = stateNow.orders.find(item => item.id === btn.dataset.orderStatus);
+      if (!order) return;
+
+      const adminNoteInput = root.querySelector(`[data-order-admin-note="${order.id}"]`);
+      const resultNoteInput = root.querySelector(`[data-order-result-note="${order.id}"]`);
+      const referenceInput = root.querySelector(`[data-order-reference="${order.id}"]`);
+      const refundInput = root.querySelector(`[data-order-refund="${order.id}"]`);
+
+      order.adminNote = String(adminNoteInput?.value || '').trim();
+      order.resultNote = String(resultNoteInput?.value || '').trim();
+      order.referenceCode = String(referenceInput?.value || '').trim();
+      order.refundAmount = Math.max(0, Number(refundInput?.value || 0));
+      order.status = btn.dataset.nextStatus;
+      order.updatedAt = new Date().toLocaleString('vi-VN');
+
+      if (order.status === 'refunded' && order.refundAmount > 0 && !order.refundApplied) {
+        const customer = stateNow.users.find(user => user.id === order.customerId);
+        if (customer) {
+          customer.balance += order.refundAmount;
+        }
+        order.refundApplied = true;
+      }
+
+      pushOrderTimeline(
+        order,
+        `Chuyển trạng thái: ${formatOrderStatus(order.status)}`,
+        'admin',
+        order.adminNote || order.resultNote || order.referenceCode || ''
+      );
+
+      addSystemMessageToChat(
+        stateNow,
+        order.customerId,
+        `Đơn ${order.id} đã được cập nhật: ${formatOrderStatus(order.status)}. ${order.resultNote ? `Kết quả: ${order.resultNote}` : ''} ${order.referenceCode ? `Mã tham chiếu: ${order.referenceCode}` : ''}`.trim()
+      );
+
+      saveState(stateNow);
+      showToast('Đã cập nhật đơn hàng.', 'success');
+      renderAdminPage();
+    });
+  });
+}
+
 function renderAdminOverviewPage() {
   const admin = renderAdminShell('admin-overview');
   if (!admin) return;
@@ -2257,7 +2563,7 @@ function renderAdminOverviewPage() {
       </section>
     `;
   }
-  renderAdminOrdersBlock();
+  renderAdminOrdersSection(state);
 }
 
 function renderAdminOrdersBlock() {

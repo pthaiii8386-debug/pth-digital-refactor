@@ -750,3 +750,69 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;background:ra
   color: #8cf0b4;
   border: 1px solid rgba(38, 210, 120, .2);
 }
+
+.badge.info {
+  background: rgba(84, 167, 255, .14);
+  color: #8ec5ff;
+  border: 1px solid rgba(84, 167, 255, .24);
+}
+
+.badge.warning {
+  background: rgba(255, 193, 92, .12);
+  color: #ffd27d;
+  border: 1px solid rgba(255, 193, 92, .2);
+}
+
+.badge.danger {
+  background: rgba(255, 107, 129, .12);
+  color: #ff9aac;
+  border: 1px solid rgba(255, 107, 129, .2);
+}
+
+.badge.success {
+  background: rgba(38, 210, 120, .12);
+  color: #8cf0b4;
+  border: 1px solid rgba(38, 210, 120, .2);
+}
+
+.admin-order-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.admin-order-card {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-order-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-order-actions {
+  margin-top: 4px;
+}
+
+.is-busy {
+  pointer-events: none;
+}
+
+@media (max-width: 860px) {
+  .admin-order-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-order-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .admin-order-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
