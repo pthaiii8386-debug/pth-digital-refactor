@@ -419,7 +419,8 @@ function getIconEmoji(iconName) {
     'Users': '👥',
     'CreditCard': '💳',
     'MessageSquare': '💬',
-    'Settings': '⚙️'
+    'Settings': '⚙️',
+    'Globe': '🌐'
   };
   return iconMap[iconName] || iconName;
 }
