@@ -781,6 +781,7 @@ function closeModal() {
   const root = getModalRoot();
   root.classList.add('hidden');
   root.innerHTML = '';
+  root.onclick = null;
 }
 
 function openModal(html) {
@@ -792,9 +793,9 @@ function openModal(html) {
     </div>
   `;
   root.classList.remove('hidden');
-  root.addEventListener('click', event => {
+  root.onclick = event => {
     if (event.target === root || event.target.closest('[data-close-modal]')) closeModal();
-  }, { once: true });
+  };
 }
 
 function populatePublicServices() {
