@@ -840,7 +840,7 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  username: Joi.string().required(),
+  identifier: Joi.string().required(),
   password: Joi.string().required()
 });
 
@@ -870,35 +870,48 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 app.post('/api/auth/login', (req, res) => {
+  console.log('Login attempt:', req.body);
+
   // Validate input
   const { error, value } = loginSchema.validate(req.body);
   if (error) {
+    console.log('Login validation error:', error.details);
     return res.status(400).json({
       message: 'Dữ liệu không hợp lệ.',
       details: error.details.map(d => d.message)
     });
   }
 
-  const { username, password } = value;
+  const { identifier, password } = value;
+  console.log('Login data:', { identifier, password: '***' });
+
   const db = readDb();
   const user = db.users.find(item =>
-    item.username.toLowerCase() === username.toLowerCase() ||
-    item.email.toLowerCase() === username.toLowerCase()
+    item.username.toLowerCase() === identifier.toLowerCase() ||
+    item.email.toLowerCase() === identifier.toLowerCase()
   );
 
+  console.log('Found user:', user ? { id: user.id, username: user.username, role: user.role } : 'Not found');
+
   if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+    console.log('Login failed: invalid credentials');
     return res.status(400).json({ message: 'Sai thông tin đăng nhập.' });
   }
 
   const token = createToken(user);
+  console.log('Login successful for user:', user.username);
+
   res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
   res.json({ user: safeUser(user), permissions: rolePermissions[user.role] || [] });
 });
 
 app.post('/api/auth/register', (req, res) => {
+  console.log('Register attempt:', req.body);
+
   // Validate input
   const { error, value } = registerSchema.validate(req.body);
   if (error) {
+    console.log('Register validation error:', error.details);
     return res.status(400).json({
       message: 'Dữ liệu không hợp lệ.',
       details: error.details.map(d => d.message)
@@ -911,11 +924,16 @@ app.post('/api/auth/register', (req, res) => {
   const email = body.email.toLowerCase();
   const password = body.password;
 
+  console.log('Register data:', { username, email, password: '***' });
+
   // Check if user exists
   const exists = db.users.some(user =>
     user.username.toLowerCase() === username.toLowerCase() ||
     user.email.toLowerCase() === email
   );
+
+  console.log('User exists check:', exists);
+
   if (exists) {
     return res.status(400).json({ message: 'Username hoặc email đã tồn tại.' });
   }
