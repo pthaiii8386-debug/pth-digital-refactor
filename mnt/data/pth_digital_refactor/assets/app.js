@@ -1393,6 +1393,7 @@ function renderServicesPage() {
         note: String(form.customerNote.value || '').trim(),
         tinOtp: isTinOtp ? { phone: tinOtpPhone, type: tinOtpType, quantity: tinOtpQuantity } : null,
         otpSent: false,
+        rentalId: null,
         adminNote: '',
         resultNote: '',
         referenceCode: '',
@@ -2695,7 +2696,7 @@ function renderAdminServiceRequestsSection(state) {
           <li><span>Dịch vụ</span><strong>${escapeHtml(req.serviceName)}</strong></li>
           <li><span>Chi tiết yêu cầu</span><strong>${escapeHtml(req.requestDetail || '--')}</strong></li>
           <li><span>Mục cần xử lý</span><strong>${escapeHtml(req.targetLabel || '--')}</strong></li>
-          ${req.tinOtp ? `<li><span>TinOtp</span><strong>Số/OTP: ${escapeHtml(req.tinOtp.phone || '--')} • Loại: ${escapeHtml(req.tinOtp.type || '--')} • SL: ${escapeHtml(String(req.tinOtp.quantity || 0))}</strong></li>` : ''}
+          ${req.tinOtp ? `<li><span>TinOtp</span><strong>Số: ${escapeHtml(req.tinOtp.phone || '--')} • Loại: ${escapeHtml(req.tinOtp.type || '--')} • SL: ${escapeHtml(String(req.tinOtp.quantity || 0))}${req.rentalId ? ` • Rental ID: ${req.rentalId}` : ''}</strong></li>` : ''}
           <li><span>Số lượng</span><strong>${req.quantity}</strong></li>
           <li><span>Tổng coin</span><strong>${formatCurrency(req.totalCoin)}</strong></li>
           <li><span>Ghi chú khách</span><strong>${escapeHtml(req.note || '--')}</strong></li>
@@ -2717,6 +2718,7 @@ function renderAdminServiceRequestsSection(state) {
 
         <div class="table-actions admin-order-actions">
           ${req.tinOtp && req.status === 'processing' && !req.otpSent ? `<button class="btn accent small" type="button" data-send-otp="${escapeHtml(req.id)}">Gửi OTP tự động</button>` : ''}
+          ${req.tinOtp && req.otpSent && req.rentalId ? `<button class="btn info small" type="button" data-check-otp="${escapeHtml(req.id)}">Kiểm tra OTP</button>` : ''}
           <button class="btn secondary small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="processing">Đang xử lý</button>
           <button class="btn primary small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="completed">Đã gửi kết quả</button>
           <button class="btn ghost small" type="button" data-request-status="${escapeHtml(req.id)}" data-next-status="refunded">Hoàn coin</button>
@@ -2765,35 +2767,35 @@ function renderAdminServiceRequestsSection(state) {
     });
   });
 
-  root.querySelectorAll('[data-send-otp]').forEach(btn => {
+  root.querySelectorAll('[data-check-otp]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const stateNow = getState();
-      const request = stateNow.serviceRequests.find(item => item.id === btn.dataset.sendOtp);
-      if (!request || !request.tinOtp) return;
+      const request = stateNow.serviceRequests.find(item => item.id === btn.dataset.checkOtp);
+      if (!request || !request.rentalId) return;
 
       setButtonBusy(btn, true);
       try {
-        const response = await fetch('/api/tinotp/rent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            service_id: request.tinOtp.type,
-            category: 'TinOtp'
-          })
-        });
+        const response = await fetch(`/api/tinotp/check?rental_id=${request.rentalId}`);
         const data = await response.json();
-        if (data.success) {
-          request.otpSent = true;
-          request.adminNote = `OTP đã gửi tự động: ${data.message || 'Thành công'}`;
-          addSystemMessageToChat(stateNow, request.customerId, `OTP cho yêu cầu ${request.id} đã được gửi tự động.`);
+        if (data.success && data.data) {
+          if (data.data.status === 1 && data.data.code) {
+            // Đã nhận OTP
+            request.adminNote = `OTP nhận được: ${data.data.code} (Số: ${request.tinOtp.phone})`;
+            showToast(`OTP nhận được: ${data.data.code}`, 'success');
+          } else if (data.data.status === 0) {
+            // Đang chờ
+            showToast('Đang chờ OTP...', 'info');
+          } else {
+            // Lỗi hoặc hết hạn
+            showToast(`Trạng thái: ${data.data.message || 'Lỗi'}`, 'warning');
+          }
           saveState(stateNow);
-          showToast('Đã gửi OTP thành công.', 'success');
           renderAdminPage();
         } else {
-          showToast(`Gửi OTP thất bại: ${data.message}`, 'error');
+          showToast('Không thể kiểm tra OTP.', 'error');
         }
       } catch (error) {
-        showToast('Lỗi khi gửi OTP.', 'error');
+        showToast('Lỗi khi kiểm tra OTP.', 'error');
       } finally {
         setButtonBusy(btn, false);
       }

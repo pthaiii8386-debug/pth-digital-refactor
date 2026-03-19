@@ -900,9 +900,9 @@ app.get('/api/tinotp/rentals', async (req, res) => {
   }
 });
 
-app.post('/api/tinotp/rent', async (req, res) => {
+app.get('/api/tinotp/rent', async (req, res) => {
   try {
-    const { service_id, category } = req.body || {};
+    const { service_id, category } = req.query;
     const data = await callTinOtp('/services/rent', 'GET', { service_id, category });
     res.json(data);
   } catch (error) {
@@ -943,6 +943,16 @@ app.get('/api/tinotp/mail/services', async (req, res) => {
 app.get('/api/tinotp/mail/active', async (req, res) => {
   try {
     const data = await callTinOtp('/mail/active', 'GET');
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tinotp/mail/:id/code', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await callTinOtp(`/mail/${id}/code`, 'POST');
     res.json(data);
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
