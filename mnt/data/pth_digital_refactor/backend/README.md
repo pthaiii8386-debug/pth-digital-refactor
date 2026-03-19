@@ -13,11 +13,27 @@ Backend API cho hệ thống PTH DIGITAL - Nền tảng dịch vụ số chuyên
 - 🛡️ Bảo mật nâng cao (Helmet, CORS, Rate Limiting)
 - 📈 Giám sát sức khỏe hệ thống
 
-## Cài đặt
+## Tài khoản đăng nhập mặc định
 
-```bash
-npm install
-```
+### Admin
+- **Username**: `admin`
+- **Password**: `Admin@123`
+- **Email**: admin@pthdigital.vn
+
+### Support Staff
+- **Username**: `support`
+- **Password**: `Support@123`
+- **Email**: support@pthdigital.vn
+
+### Accountant
+- **Username**: `accountant`
+- **Password**: `Accounting@123`
+- **Email**: accounting@pthdigital.vn
+
+### Customer Demo
+- **Username**: `minhanh`
+- **Password**: `123456`
+- **Email**: minhanh@gmail.com
 
 ## Chạy
 
