@@ -216,6 +216,21 @@ function seedDb() {
         source: 'manual',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'sv-tinotp',
+        name: 'TinOtp - Thuê số/OTP',
+        category: 'TinOtp',
+        price: 20000,
+        unit: 'lần',
+        description: 'Gửi yêu cầu thuê số/OTP (SMS/Email/Zalo) để admin trả kết quả hoặc hoàn coin.',
+        image: '',
+        tags: ['TinOtp', 'OTP', 'Thuê số'],
+        featured: false,
+        status: 'active',
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ],
     orders: [

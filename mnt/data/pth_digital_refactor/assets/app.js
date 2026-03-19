@@ -126,6 +126,17 @@ const DEFAULT_STATE = {
       status: 'active'
     },
     {
+      id: 'sv-tinotp',
+      name: 'TinOtp - Thuê số/OTP',
+      category: 'TinOtp',
+      price: 20000,
+      unit: 'lần',
+      description: 'Gửi yêu cầu thuê số/OTP (SMS/Email/Zalo) để admin trả kết quả hoặc hoàn coin nếu không thực hiện được.',
+      tags: ['TinOtp', 'OTP', 'Thuê số'],
+      featured: false,
+      status: 'active'
+    },
+    {
       id: 'sv5',
       name: 'Báo cáo hiệu quả chiến dịch hàng tháng',
       category: 'Report',
@@ -1248,6 +1259,30 @@ function renderServicesPage() {
     const service = serviceById(freshState, serviceId);
     if (!service || !customer) return;
 
+    const isTinOtp = service.category === 'TinOtp';
+    const tinOtpFields = isTinOtp ? `
+          <label>
+            <span class="mini-label">Số/OTP cần thuê</span>
+            <input class="input" type="text" name="tinOtpPhone" placeholder="Ví dụ: 0888xxx hoặc email@domain.com">
+          </label>
+
+          <label>
+            <span class="mini-label">Loại yêu cầu</span>
+            <select class="select" name="tinOtpType">
+              <option value="SMS">SMS</option>
+              <option value="Email">Email</option>
+              <option value="Zalo">Zalo</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </label>
+
+          <label>
+            <span class="mini-label">Số lượng OTP</span>
+            <input class="input" type="number" min="1" step="1" name="tinOtpQuantity" value="1">
+          </label>
+    ` : '';
+
     const html = `
       <div class="modal-body">
         <span class="mini-label">Xác nhận mua dịch vụ</span>
@@ -1265,6 +1300,8 @@ function renderServicesPage() {
             <span class="mini-label">Số lượng</span>
             <input class="input" type="number" name="quantity" min="1" step="1" value="1">
           </label>
+
+          ${tinOtpFields}
 
           <label>
             <span class="mini-label">Yêu cầu dịch vụ</span>
@@ -1331,6 +1368,10 @@ function renderServicesPage() {
       const quantity = Math.max(1, Number(form.quantity.value || 1));
       const totalCoin = Number(latestService.price || 0) * quantity;
 
+      const tinOtpPhone = isTinOtp ? String(form.tinOtpPhone.value || '').trim() : '';
+      const tinOtpType = isTinOtp ? String(form.tinOtpType.value || '').trim() : '';
+      const tinOtpQuantity = isTinOtp ? Math.max(1, Number(form.tinOtpQuantity.value || 1)) : 0;
+
       if (latestCustomer.balance < totalCoin) {
         setButtonBusy(submitBtn, false);
         showToast('Số dư chưa đủ, vui lòng nạp thêm coin.', 'error');
@@ -1350,6 +1391,7 @@ function renderServicesPage() {
         requestDetail: String(form.requestDetail.value || '').trim(),
         targetLabel: String(form.targetLabel.value || '').trim(),
         note: String(form.customerNote.value || '').trim(),
+        tinOtp: isTinOtp ? { phone: tinOtpPhone, type: tinOtpType, quantity: tinOtpQuantity } : null,
         adminNote: '',
         resultNote: '',
         referenceCode: '',
@@ -1374,6 +1416,11 @@ function renderServicesPage() {
         note: String(form.customerNote.value || '').trim() || String(form.requestDetail.value || '').trim(),
         requestDetail: String(form.requestDetail.value || '').trim(),
         targetLabel: String(form.targetLabel.value || '').trim(),
+        tinOtp: isTinOtp ? {
+          phone: tinOtpPhone,
+          type: tinOtpType,
+          quantity: tinOtpQuantity
+        } : null,
         status: 'pending',
         adminNote: '',
         adminSendDate: '',
@@ -1576,6 +1623,7 @@ function renderHistoryPage() {
           <div class="cell-muted">Yêu cầu: ${escapeHtml(item.requestDetail || '--')}</div>
           <div class="cell-muted">Mục xử lý: ${escapeHtml(item.targetLabel || '--')}</div>
           <div class="cell-muted">Ghi chú khách: ${escapeHtml(item.note || '--')}</div>
+          ${item.tinOtp ? `<div class="cell-muted">TinOtp: ${escapeHtml(item.tinOtp.phone || '--')} | ${escapeHtml(item.tinOtp.type || '--')} | Số lượng: ${escapeHtml(String(item.tinOtp.quantity || 0))}</div>` : ''}
         </td>
         <td>${item.quantity}</td>
         <td>${formatCurrency(item.totalCoin)}</td>
@@ -2479,6 +2527,7 @@ function renderAdminOrdersSection(state) {
           <li><span>Yêu cầu</span><strong>${escapeHtml(order.requestDetail || '--')}</strong></li>
           <li><span>Mục xử lý</span><strong>${escapeHtml(order.targetLabel || '--')}</strong></li>
           <li><span>Ghi chú khách</span><strong>${escapeHtml(order.note || '--')}</strong></li>
+          ${order.tinOtp ? `<li><span>Yêu cầu TinOtp</span><strong>Số/OTP: ${escapeHtml(order.tinOtp.phone || '--')} • Loại: ${escapeHtml(order.tinOtp.type || '--')} • Số lượng: ${escapeHtml(String(order.tinOtp.quantity || 0))}</strong></li>` : ''}
         </div>
 
         <div class="admin-order-fields">
@@ -2644,6 +2693,7 @@ function renderAdminServiceRequestsSection(state) {
           <li><span>Dịch vụ</span><strong>${escapeHtml(req.serviceName)}</strong></li>
           <li><span>Chi tiết yêu cầu</span><strong>${escapeHtml(req.requestDetail || '--')}</strong></li>
           <li><span>Mục cần xử lý</span><strong>${escapeHtml(req.targetLabel || '--')}</strong></li>
+          ${req.tinOtp ? `<li><span>TinOtp</span><strong>Số/OTP: ${escapeHtml(req.tinOtp.phone || '--')} • Loại: ${escapeHtml(req.tinOtp.type || '--')} • SL: ${escapeHtml(String(req.tinOtp.quantity || 0))}</strong></li>` : ''}
           <li><span>Số lượng</span><strong>${req.quantity}</strong></li>
           <li><span>Tổng coin</span><strong>${formatCurrency(req.totalCoin)}</strong></li>
           <li><span>Ghi chú khách</span><strong>${escapeHtml(req.note || '--')}</strong></li>
