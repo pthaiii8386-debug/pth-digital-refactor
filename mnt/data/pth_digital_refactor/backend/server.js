@@ -684,7 +684,10 @@ function mergeAdminState(prev, incoming) {
     };
   });
 
-  db.orders = Array.isArray(incoming.orders) ? incoming.orders : db.orders;
+  db.orders = Array.isArray(incoming.orders) ? incoming.orders.map(order => {
+    const existing = prev.orders.find(o => o.id === order.id);
+    return existing ? { ...existing, ...order } : order;
+  }) : db.orders;
   db.deposits = Array.isArray(incoming.deposits) ? incoming.deposits : db.deposits;
   db.chats = Array.isArray(incoming.chats) ? incoming.chats : db.chats;
   db.serviceRequests = Array.isArray(incoming.serviceRequests) ? incoming.serviceRequests : db.serviceRequests;

@@ -431,11 +431,13 @@ function saveState(state) {
 
   if (!APP_USER) return Promise.resolve(APP_STATE);
 
+  console.log('Syncing state to server...');
   return apiRequest('/api/state', {
     method: 'POST',
     body: JSON.stringify({ state: APP_STATE })
   })
     .then(payload => {
+      console.log('State synced successfully');
       APP_STATE = payload.state || APP_STATE;
       APP_USER = payload.currentUser || APP_USER;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(APP_STATE));
@@ -446,6 +448,7 @@ function saveState(state) {
     })
     .catch(error => {
       console.error('Lỗi đồng bộ state:', error);
+      showToast('Lỗi đồng bộ dữ liệu. Vui lòng thử lại.', 'error');
       return APP_STATE;
     });
 }
@@ -1280,13 +1283,19 @@ function openPurchaseModal(service, user) {
 
   purchaseForm?.addEventListener('submit', event => {
     event.preventDefault();
+    console.log('Purchase form submitted');
+
     const freshState = getState();
     const customer = freshState.users.find(item => item.id === user.id);
     const total = service.price * quantity;
+
+    console.log('Purchase details:', { service: service.name, quantity, total, balance: customer.balance });
+
     if (customer.balance < total) {
       showToast('Số dư chưa đủ. Vui lòng nạp thêm coin trước khi mua.', 'error');
       return;
     }
+
     customer.balance -= total;
     const newOrder = {
       id: makeOrderCode(),
@@ -1306,12 +1315,18 @@ function openPurchaseModal(service, user) {
       timeline: []
     };
 
+    console.log('Created new order:', newOrder.id);
+
     pushOrderTimeline(newOrder, 'Tạo đơn', 'customer', newOrder.note || 'Khách hàng vừa tạo đơn');
     freshState.orders.unshift(newOrder);
-    saveState(freshState);
-    closeModal();
-    showToast('Đã tạo đơn hàng mới.', 'success');
-    refreshCurrentView();
+
+    saveState(freshState).then(() => {
+      closeModal();
+      showToast('Đã tạo đơn hàng mới.', 'success');
+      refreshCurrentView();
+    }).catch(() => {
+      // Error already shown in saveState
+    });
   });
 }
 
@@ -2799,9 +2814,12 @@ function renderAdminOrdersSection(state) {
         `Đơn ${order.id} đã được cập nhật: ${formatOrderStatus(order.status)}. ${order.resultNote ? `Kết quả: ${order.resultNote}` : ''} ${order.referenceCode ? `Mã tham chiếu: ${order.referenceCode}` : ''}`.trim()
       );
 
-      saveState(stateNow);
-      showToast('Đã cập nhật đơn hàng.', 'success');
-      renderAdminPage();
+      saveState(stateNow).then(() => {
+        showToast('Đã cập nhật đơn hàng.', 'success');
+        renderAdminPage();
+      }).catch(() => {
+        // Error already shown in saveState
+      });
     });
   });
 }
