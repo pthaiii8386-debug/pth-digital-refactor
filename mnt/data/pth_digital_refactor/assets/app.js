@@ -1365,11 +1365,15 @@ function renderServicesPage() {
             <input class="input" type="number" min="1" step="1" name="tinOtpQuantity" value="1">
           </label>
     ` : isAutoTinOtp ? `
-          <div class="info-box">
-            <span class="mini-label">Thông tin tự động</span>
-            <p>✅ Admin sẽ tự động thuê số từ hệ thống TinOTP</p>
-            <p>✅ Số điện thoại và OTP sẽ được gửi về web ngay khi có</p>
-            <p>✅ Bạn sẽ nhận được thông báo real-time</p>
+          <label>
+            <span class="mini-label">Chọn số/OTP cần thuê</span>
+            <select class="select" name="tinOtpServiceSelect" id="tinotp-service-select" data-category="${service.tinOtpCategory || 11}">
+              <option value="">Đang tải danh sách...</option>
+            </select>
+          </label>
+          <div id="tinotp-service-info" style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 6px; display: none;">
+            <div style="margin-bottom: 8px;"><span class="mini-label">Số lượng có sẵn</span><strong id="tinotp-available">--</strong></div>
+            <div><span class="mini-label">Giá thuê</span><strong id="tinotp-price-detail">--</strong></div>
           </div>
     ` : '';
 
@@ -1430,9 +1434,60 @@ function renderServicesPage() {
     const preview = document.getElementById('order-preview-box');
     const submitBtn = document.getElementById('confirm-order-btn');
 
+    // Load TinOTP services list for auto-services
+    if (isAutoTinOtp) {
+      const serviceSelect = document.getElementById('tinotp-service-select');
+      const category = serviceSelect?.dataset.category || 11;
+      
+      fetch(`/api/tinotp/services?category=${category}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data && Array.isArray(data.data)) {
+            const options = data.data.map(srv => 
+              `<option value="${srv.id}" data-price="${srv.rent_price || 0}" data-name="${escapeHtml(srv.name || '')}">${escapeHtml(srv.name || 'Unknown')} - ${formatCurrency(srv.rent_price || 0)}</option>`
+            ).join('');
+            serviceSelect.innerHTML = `<option value="">-- Chọn số để thuê --</option>${options}`;
+            
+            // Handle selection change
+            serviceSelect.addEventListener('change', () => {
+              const selected = serviceSelect.options[serviceSelect.selectedIndex];
+              const infoBox = document.getElementById('tinotp-service-info');
+              if (selected.value) {
+                const selectedPrice = Number(selected.dataset.price || 0);
+                const selectedName = selected.dataset.name || 'Unknown';
+                document.getElementById('tinotp-available').textContent = selectedName;
+                document.getElementById('tinotp-price-detail').textContent = formatCurrency(selectedPrice);
+                infoBox.style.display = 'block';
+                updatePreview();
+              } else {
+                infoBox.style.display = 'none';
+              }
+            });
+          } else {
+            serviceSelect.innerHTML = '<option value="">Không có dữ liệu</option>';
+          }
+        })
+        .catch(error => {
+          serviceSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+          console.error('Error loading TinOTP services:', error);
+        });
+    }
+
     const updatePreview = () => {
       const qty = Math.max(1, Number(form.quantity.value || 1));
-      const totalCoin = Number(service.price || 0) * qty;
+      
+      let totalCoin = Number(service.price || 0) * qty;
+      
+      // Jika TinOTP auto, gunakan harga dari API
+      if (isAutoTinOtp) {
+        const serviceSelect = document.getElementById('tinotp-service-select');
+        if (serviceSelect?.value) {
+          const selected = serviceSelect.options[serviceSelect.selectedIndex];
+          const selectedPrice = Number(selected.dataset.price || 0);
+          totalCoin = selectedPrice * qty;
+        }
+      }
+      
       preview.innerHTML = `
         <div class="detail-row"><span>Số lượng</span><strong>${qty}</strong></div>
         <div class="detail-row"><span>Tổng coin</span><strong>${formatCurrency(totalCoin)}</strong></div>
@@ -1441,6 +1496,15 @@ function renderServicesPage() {
     };
 
     form.quantity.addEventListener('input', updatePreview);
+    
+    // Add listener for TinOTP service selection
+    if (isAutoTinOtp) {
+      const serviceSelect = document.getElementById('tinotp-service-select');
+      if (serviceSelect) {
+        serviceSelect.addEventListener('change', updatePreview);
+      }
+    }
+    
     updatePreview();
 
     form.addEventListener('submit', event => {
@@ -1456,10 +1520,24 @@ function renderServicesPage() {
       }
 
       const quantity = Math.max(1, Number(form.quantity.value || 1));
-      const totalCoin = Number(latestService.price || 0) * quantity;
+      
+      let totalCoin = Number(latestService.price || 0) * quantity;
+      let selectedTinOtpServiceId = '';
+      let selectedTinOtpPrice = 0;
+      
+      // Untuk TinOTP auto, ambil dari dropdown
+      if (isAutoTinOtp) {
+        const serviceSelect = document.getElementById('tinotp-service-select');
+        if (serviceSelect?.value) {
+          selectedTinOtpServiceId = serviceSelect.value;
+          const selected = serviceSelect.options[serviceSelect.selectedIndex];
+          selectedTinOtpPrice = Number(selected.dataset.price || 0);
+          totalCoin = selectedTinOtpPrice * quantity;
+        }
+      }
 
       const tinOtpPhone = isTinOtp && !isAutoTinOtp ? String(form.tinOtpPhone?.value || '').trim() : '';
-      const tinOtpType = isTinOtp && !isAutoTinOtp ? String(form.tinOtpType?.value || '').trim() : isAutoTinOtp ? latestService.tinOtpServiceId || latestService.id : '';
+      const tinOtpType = isTinOtp && !isAutoTinOtp ? String(form.tinOtpType?.value || '').trim() : isAutoTinOtp ? selectedTinOtpServiceId || latestService.tinOtpServiceId || latestService.id : '';
       const tinOtpQuantity = isTinOtp && !isAutoTinOtp ? Math.max(1, Number(form.tinOtpQuantity?.value || 1)) : 1;
 
       if (latestCustomer.balance < totalCoin) {
@@ -1486,7 +1564,8 @@ function renderServicesPage() {
           type: tinOtpType, 
           quantity: tinOtpQuantity,
           category: isAutoTinOtp ? latestService.tinOtpCategory : null,
-          serviceId: isAutoTinOtp ? latestService.tinOtpServiceId : null
+          serviceId: isAutoTinOtp ? selectedTinOtpServiceId || latestService.tinOtpServiceId : null,
+          apiPrice: isAutoTinOtp ? selectedTinOtpPrice : null
         } : null,
         otpSent: false,
         rentalId: null,
