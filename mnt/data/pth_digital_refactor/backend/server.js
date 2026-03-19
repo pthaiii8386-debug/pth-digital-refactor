@@ -8,7 +8,13 @@ import path from 'path';
 import cron from 'node-cron';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
+import helmet from 'helmet';
+import cors from 'cors';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import Joi from 'joi';
 import { fileURLToPath } from 'url';
+import customerRegistry from './customer-registry.js';
 
 // Load .env file for local development (not using dotenv dependency)
 function loadDotEnv() {
@@ -133,14 +139,14 @@ function seedDb() {
     company: {
       name: 'PTH DIGITAL',
       slogan: 'Nền tảng dịch vụ số chuyên nghiệp cho doanh nghiệp',
-      about: 'Website dịch vụ số có cổng đăng nhập rõ ràng, khu khách hàng tách trang, khu admin đầy đủ chức năng và giao diện tối ưu tốt trên desktop lẫn điện thoại.',
+      about: 'PTH DIGITAL là nền tảng số hỗ trợ doanh nghiệp quản lý thông tin dịch vụ, thanh toán và thương hiệu một cách rõ ràng, chuyên nghiệp và hiệu quả. Website được xây dựng nhằm mang đến trải nghiệm thuận tiện cho khách hàng với giao diện dễ sử dụng, thông tin minh bạch và quy trình thao tác nhanh gọn. Chúng tôi luôn đặt uy tín, chất lượng và sự hài lòng của khách hàng làm trọng tâm để tạo nên giá trị bền vững và niềm tin lâu dài.',
       adminName: 'THANH HẢI',
       adminTitle: 'Founder & Digital Operations Lead',
       supportEmail: 'support@pthdigital.vn',
       supportTelegram: 'https://t.me/Mmo_white',
       supportPhone: '0901 234 567',
       address: 'Quảng Trị, Việt Nam',
-      trustText: 'Thiết kế gọn, quy trình rõ, hiển thị đẹp trên mobile và dễ nâng cấp lên backend thật.',
+      trustText: 'Khách hàng trao niềm tin, chúng tôi trao giá trị.\n\nUy tín làm nên thương hiệu, niềm tin làm nên thành công.\n\nMỗi sản phẩm là một cam kết, mỗi khách hàng là một niềm tin.',
       websiteEmail: 'support@pthdigital.vn',
       websiteAddress: 'Quảng Trị, Việt Nam',
       websitePhone: '0901 234 567'
@@ -647,7 +653,23 @@ function mergeAdminState(prev, incoming) {
   const prevUsersMap = new Map(prev.users.map(item => [item.id, item]));
   db.users = (incoming.users || []).map(user => {
     const before = prevUsersMap.get(user.id) || {};
-    return { ...before, ...user, passwordHash: before.passwordHash };
+    const isNewUser = !before.id;
+    const mergedUser = { ...before, ...user, passwordHash: before.passwordHash };
+    // Add to customer registry if new customer
+    if (isNewUser && mergedUser.role === 'customer') {
+      customerRegistry.addCustomer({
+        id: mergedUser.id,
+        username: mergedUser.username,
+        email: mergedUser.email,
+        fullName: mergedUser.fullName,
+        phone: mergedUser.phone,
+        address: mergedUser.address,
+        registrationDate: new Date().toISOString(),
+        status: mergedUser.status,
+        balance: mergedUser.balance
+      });
+    }
+    return mergedUser;
   });
 
   db.services = (incoming.services || []).map(service => {
@@ -757,9 +779,70 @@ async function callTinOtp(path, method = 'GET', params = {}, body = null) {
 }
 
 const app = express();
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : true,
+  credentials: true
+}));
+app.use(compression());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
+// Auth rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 auth attempts per windowMs
+  message: 'Too many authentication attempts, please try again later.',
+});
+app.use('/api/auth/', authLimiter);
+
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(cookieParser());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '1.0.0'
+  });
+});
+
+// Validation schemas
+const registerSchema = Joi.object({
+  username: Joi.string().min(3).max(50).required(),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
+  fullName: Joi.string().min(2).max(100).required(),
+  phone: Joi.string().pattern(/^[\+]?[0-9\-\(\)\s]+$/).optional(),
+  address: Joi.string().max(500).optional()
+});
+
+const loginSchema = Joi.object({
+  username: Joi.string().required(),
+  password: Joi.string().required()
+});
 
 app.use('/assets', express.static(path.join(projectRoot, 'assets')));
 app.use('/auth', express.static(path.join(projectRoot, 'auth')));
@@ -787,34 +870,64 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 app.post('/api/auth/login', (req, res) => {
-  const { identifier, password } = req.body || {};
+  // Validate input
+  const { error, value } = loginSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: 'Dữ liệu không hợp lệ.',
+      details: error.details.map(d => d.message)
+    });
+  }
+
+  const { username, password } = value;
   const db = readDb();
-  const user = db.users.find(item => [item.username.toLowerCase(), item.email.toLowerCase()].includes(String(identifier || '').trim().toLowerCase()));
-  if (!user || !bcrypt.compareSync(String(password || ''), user.passwordHash)) {
+  const user = db.users.find(item =>
+    item.username.toLowerCase() === username.toLowerCase() ||
+    item.email.toLowerCase() === username.toLowerCase()
+  );
+
+  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
     return res.status(400).json({ message: 'Sai thông tin đăng nhập.' });
   }
+
   const token = createToken(user);
   res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
   res.json({ user: safeUser(user), permissions: rolePermissions[user.role] || [] });
 });
 
 app.post('/api/auth/register', (req, res) => {
+  // Validate input
+  const { error, value } = registerSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: 'Dữ liệu không hợp lệ.',
+      details: error.details.map(d => d.message)
+    });
+  }
+
   const db = readDb();
-  const body = req.body || {};
-  const username = String(body.username || '').trim();
-  const email = String(body.email || '').trim().toLowerCase();
-  const password = String(body.password || '');
-  if (!username || !email || !password) return res.status(400).json({ message: 'Thiếu thông tin đăng ký.' });
-  const exists = db.users.some(user => user.username.toLowerCase() === username.toLowerCase() || user.email.toLowerCase() === email);
-  if (exists) return res.status(400).json({ message: 'Username hoặc email đã tồn tại.' });
+  const body = value;
+  const username = body.username.trim();
+  const email = body.email.toLowerCase();
+  const password = body.password;
+
+  // Check if user exists
+  const exists = db.users.some(user =>
+    user.username.toLowerCase() === username.toLowerCase() ||
+    user.email.toLowerCase() === email
+  );
+  if (exists) {
+    return res.status(400).json({ message: 'Username hoặc email đã tồn tại.' });
+  }
+
   const user = {
     id: `u${Date.now()}`,
     role: 'customer',
     username,
     email,
-    fullName: String(body.fullName || '').trim(),
-    phone: String(body.phone || '').trim(),
-    address: String(body.address || '').trim(),
+    fullName: body.fullName.trim(),
+    phone: body.phone?.trim() || '',
+    address: body.address?.trim() || '',
     balance: 0,
     bio: '',
     avatar: '',
@@ -823,6 +936,22 @@ app.post('/api/auth/register', (req, res) => {
   };
   db.users.push(user);
   writeDb(db);
+
+  // Add to customer registry if new customer
+  if (user.role === 'customer') {
+    customerRegistry.addCustomer({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone,
+      address: user.address,
+      registrationDate: new Date().toISOString(),
+      status: user.status,
+      balance: user.balance
+    });
+  }
+
   const token = createToken(user);
   res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
   res.json({ user: safeUser(user), permissions: rolePermissions[user.role] || [] });
@@ -901,73 +1030,65 @@ app.post('/api/webhooks/service-sync', async (req, res) => {
 });
 
 app.get('/api/reports/export.xlsx', requireAuth, requireRoles('admin','accountant'), async (req, res) => {
-  const db = req.db;
-  const workbook = new ExcelJS.Workbook();
-  const customersSheet = workbook.addWorksheet('Khach hang');
-  customersSheet.columns = [
-    { header: 'ID', key: 'id', width: 20 },
-    { header: 'Ho ten', key: 'fullName', width: 24 },
-    { header: 'Username', key: 'username', width: 18 },
-    { header: 'Email', key: 'email', width: 28 },
-    { header: 'Phone', key: 'phone', width: 16 },
-    { header: 'Balance', key: 'balance', width: 14 },
-    { header: 'Role', key: 'role', width: 14 }
-  ];
-  db.users.forEach(user => customersSheet.addRow(safeUser(user)));
-  const ordersSheet = workbook.addWorksheet('Don hang');
-  ordersSheet.columns = [
-    { header: 'Ma don', key: 'id', width: 22 },
-    { header: 'Khach hang', key: 'customerId', width: 18 },
-    { header: 'Dich vu', key: 'serviceName', width: 30 },
-    { header: 'So luong', key: 'quantity', width: 12 },
-    { header: 'Tong coin', key: 'totalCoin', width: 14 },
-    { header: 'Trang thai', key: 'status', width: 14 },
-    { header: 'Thoi gian', key: 'createdAt', width: 22 }
-  ];
-  db.orders.forEach(order => ordersSheet.addRow(order));
-  const depositsSheet = workbook.addWorksheet('Nap tien');
-  depositsSheet.columns = [
-    { header: 'Ma nap', key: 'id', width: 22 },
-    { header: 'Khach hang', key: 'customerId', width: 18 },
-    { header: 'So tien', key: 'amount', width: 14 },
-    { header: 'Coin', key: 'coin', width: 14 },
-    { header: 'Trang thai', key: 'status', width: 14 },
-    { header: 'Noi dung', key: 'note', width: 32 },
-    { header: 'Thoi gian', key: 'createdAt', width: 22 }
-  ];
-  db.deposits.forEach(item => depositsSheet.addRow(item));
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename="pth-report.xlsx"');
-  await workbook.xlsx.write(res);
-  res.end();
+  try {
+    const db = req.db;
+
+    // Sync dữ liệu từ main DB
+    customerRegistry.syncFromMainDB(db);
+
+    // Lấy dữ liệu từ registry
+    const customers = customerRegistry.getAllCustomers();
+    const customersFromDB = db.users.filter(u => u.role === 'customer');
+
+    // Xuất báo cáo chi tiết
+    const filePath = await customerRegistry.exportExcelReport(customersFromDB, db.orders || [], db.deposits || []);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="pth-digital-report-${new Date().toISOString().split('T')[0]}.xlsx"`);
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('end', () => {
+      // Xóa file tạm sau khi gửi
+      fs.unlinkSync(filePath);
+    });
+
+  } catch (error) {
+    console.error('Error exporting Excel:', error);
+    res.status(500).json({ message: 'Lỗi xuất báo cáo Excel' });
+  }
 });
 
-app.get('/api/reports/export.pdf', requireAuth, requireRoles('admin','accountant'), (req, res) => {
-  const db = req.db;
-  const doc = new PDFDocument({ margin: 36 });
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename="pth-report.pdf"');
-  doc.pipe(res);
-  doc.fontSize(18).text('PTH DIGITAL - Bao cao tong hop');
-  doc.moveDown();
-  doc.fontSize(11).text(`Ngay xuat: ${nowVN()}`);
-  doc.moveDown();
-  doc.fontSize(13).text('Tong quan');
-  doc.fontSize(11).text(`So khach hang: ${db.users.filter(u => u.role === 'customer').length}`);
-  doc.text(`So dich vu: ${db.services.length}`);
-  doc.text(`So don hang: ${db.orders.length}`);
-  doc.text(`So lenh nap: ${db.deposits.length}`);
-  doc.moveDown();
-  doc.fontSize(13).text('Lenh nap gan day');
-  db.deposits.slice(0, 10).forEach(item => {
-    doc.fontSize(10).text(`${item.id} | ${item.customerId} | ${item.amount} VND | ${item.status} | ${item.createdAt}`);
-  });
-  doc.moveDown();
-  doc.fontSize(13).text('Don hang gan day');
-  db.orders.slice(0, 10).forEach(item => {
-    doc.fontSize(10).text(`${item.id} | ${item.serviceName} | ${item.totalCoin} coin | ${item.status} | ${item.createdAt}`);
-  });
-  doc.end();
+app.get('/api/reports/export.pdf', requireAuth, requireRoles('admin','accountant'), async (req, res) => {
+  try {
+    const db = req.db;
+
+    // Sync dữ liệu từ main DB
+    customerRegistry.syncFromMainDB(db);
+
+    // Lấy dữ liệu từ registry
+    const customers = customerRegistry.getAllCustomers();
+    const customersFromDB = db.users.filter(u => u.role === 'customer');
+
+    // Xuất báo cáo PDF
+    const filePath = await customerRegistry.exportPDFReport(customersFromDB, db.orders || [], db.deposits || []);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="pth-digital-report-${new Date().toISOString().split('T')[0]}.pdf"`);
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('end', () => {
+      // Xóa file tạm sau khi gửi
+      fs.unlinkSync(filePath);
+    });
+
+  } catch (error) {
+    console.error('Error exporting PDF:', error);
+    res.status(500).json({ message: 'Lỗi xuất báo cáo PDF' });
+  }
 });
 
 cron.schedule('*/15 * * * *', async () => {
@@ -1103,6 +1224,38 @@ app.post('/api/tinotp/mail/code', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
+
+// Unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+const server = app.listen(PORT, () => {
+  // Sync customer registry on startup
+  try {
+    const db = readDb();
+    customerRegistry.syncFromMainDB(db);
+    console.log('Customer registry synced successfully');
+  } catch (error) {
+    console.error('Failed to sync customer registry:', error.message);
+  }
+
   console.log(`PTH DIGITAL backend running at http://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
 });
