@@ -136,6 +136,88 @@ const DEFAULT_STATE = {
       featured: false,
       status: 'active'
     },
+    // TinOTP Services - Facebook
+    {
+      id: 'tinotp-fb-vn',
+      name: 'Thuê số OTP Facebook Việt Nam',
+      category: 'TinOTP - Facebook',
+      price: 2500,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Việt Nam nhận OTP Facebook. Tự động gửi số và OTP về web.',
+      tags: ['Facebook', 'OTP', 'Việt Nam', 'TinOTP'],
+      featured: true,
+      status: 'active'
+    },
+    {
+      id: 'tinotp-fb-us',
+      name: 'Thuê số OTP Facebook Mỹ',
+      category: 'TinOTP - Facebook',
+      price: 3000,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Mỹ nhận OTP Facebook. Tự động gửi số và OTP về web.',
+      tags: ['Facebook', 'OTP', 'USA', 'TinOTP'],
+      featured: true,
+      status: 'active'
+    },
+    // TinOTP Services - Gmail
+    {
+      id: 'tinotp-gmail-vn',
+      name: 'Thuê số OTP Gmail Việt Nam',
+      category: 'TinOTP - Gmail',
+      price: 2800,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Việt Nam nhận OTP Gmail/Google. Tự động gửi số và OTP về web.',
+      tags: ['Gmail', 'Google', 'OTP', 'Việt Nam', 'TinOTP'],
+      featured: true,
+      status: 'active'
+    },
+    {
+      id: 'tinotp-gmail-us',
+      name: 'Thuê số OTP Gmail Mỹ',
+      category: 'TinOTP - Gmail',
+      price: 3200,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Mỹ nhận OTP Gmail/Google. Tự động gửi số và OTP về web.',
+      tags: ['Gmail', 'Google', 'OTP', 'USA', 'TinOTP'],
+      featured: true,
+      status: 'active'
+    },
+    // TinOTP Services - Instagram
+    {
+      id: 'tinotp-ig-vn',
+      name: 'Thuê số OTP Instagram Việt Nam',
+      category: 'TinOTP - Instagram',
+      price: 2600,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Việt Nam nhận OTP Instagram. Tự động gửi số và OTP về web.',
+      tags: ['Instagram', 'OTP', 'Việt Nam', 'TinOTP'],
+      featured: true,
+      status: 'active'
+    },
+    // TinOTP Services - Twitter/X
+    {
+      id: 'tinotp-twitter-us',
+      name: 'Thuê số OTP Twitter/X Mỹ',
+      category: 'TinOTP - Twitter',
+      price: 2900,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Mỹ nhận OTP Twitter/X. Tự động gửi số và OTP về web.',
+      tags: ['Twitter', 'X', 'OTP', 'USA', 'TinOTP'],
+      featured: false,
+      status: 'active'
+    },
+    // TinOTP Services - Hotmail
+    {
+      id: 'tinotp-hotmail-us',
+      name: 'Thuê số OTP Hotmail Mỹ',
+      category: 'TinOTP - Hotmail',
+      price: 2700,
+      unit: 'lần',
+      description: 'Thuê số điện thoại Mỹ nhận OTP Hotmail/Outlook. Tự động gửi số và OTP về web.',
+      tags: ['Hotmail', 'Outlook', 'OTP', 'USA', 'TinOTP'],
+      featured: false,
+      status: 'active'
+    },
     {
       id: 'sv5',
       name: 'Báo cáo hiệu quả chiến dịch hàng tháng',
@@ -1259,8 +1341,9 @@ function renderServicesPage() {
     const service = serviceById(freshState, serviceId);
     if (!service || !customer) return;
 
-    const isTinOtp = service.category === 'TinOtp';
-    const tinOtpFields = isTinOtp ? `
+    const isTinOtp = service.category === 'TinOtp' || service.category.startsWith('TinOTP -');
+    const isAutoTinOtp = service.category.startsWith('TinOTP -');
+    const tinOtpFields = isTinOtp && !isAutoTinOtp ? `
           <label>
             <span class="mini-label">Số/OTP cần thuê</span>
             <input class="input" type="text" name="tinOtpPhone" placeholder="Ví dụ: 0888xxx hoặc email@domain.com">
@@ -1281,6 +1364,13 @@ function renderServicesPage() {
             <span class="mini-label">Số lượng OTP</span>
             <input class="input" type="number" min="1" step="1" name="tinOtpQuantity" value="1">
           </label>
+    ` : isAutoTinOtp ? `
+          <div class="info-box">
+            <span class="mini-label">Thông tin tự động</span>
+            <p>✅ Admin sẽ tự động thuê số từ hệ thống TinOTP</p>
+            <p>✅ Số điện thoại và OTP sẽ được gửi về web ngay khi có</p>
+            <p>✅ Bạn sẽ nhận được thông báo real-time</p>
+          </div>
     ` : '';
 
     const html = `
@@ -1368,9 +1458,9 @@ function renderServicesPage() {
       const quantity = Math.max(1, Number(form.quantity.value || 1));
       const totalCoin = Number(latestService.price || 0) * quantity;
 
-      const tinOtpPhone = isTinOtp ? String(form.tinOtpPhone.value || '').trim() : '';
-      const tinOtpType = isTinOtp ? String(form.tinOtpType.value || '').trim() : '';
-      const tinOtpQuantity = isTinOtp ? Math.max(1, Number(form.tinOtpQuantity.value || 1)) : 0;
+      const tinOtpPhone = isTinOtp && !isAutoTinOtp ? String(form.tinOtpPhone?.value || '').trim() : '';
+      const tinOtpType = isTinOtp && !isAutoTinOtp ? String(form.tinOtpType?.value || '').trim() : isAutoTinOtp ? latestService.tinOtpServiceId || latestService.id : '';
+      const tinOtpQuantity = isTinOtp && !isAutoTinOtp ? Math.max(1, Number(form.tinOtpQuantity?.value || 1)) : 1;
 
       if (latestCustomer.balance < totalCoin) {
         setButtonBusy(submitBtn, false);
@@ -1391,7 +1481,13 @@ function renderServicesPage() {
         requestDetail: String(form.requestDetail.value || '').trim(),
         targetLabel: String(form.targetLabel.value || '').trim(),
         note: String(form.customerNote.value || '').trim(),
-        tinOtp: isTinOtp ? { phone: tinOtpPhone, type: tinOtpType, quantity: tinOtpQuantity } : null,
+        tinOtp: isTinOtp ? { 
+          phone: tinOtpPhone, 
+          type: tinOtpType, 
+          quantity: tinOtpQuantity,
+          category: isAutoTinOtp ? latestService.tinOtpCategory : null,
+          serviceId: isAutoTinOtp ? latestService.tinOtpServiceId : null
+        } : null,
         otpSent: false,
         rentalId: null,
         adminNote: '',
